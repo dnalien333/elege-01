@@ -9,9 +9,11 @@ import Dashboard from "./pages/Dashboard";
 import Campanhas from "./pages/Campanhas";
 import Cadastro from "./pages/Cadastro";
 import Segmentos from "./pages/Segmentos";
+import Eleitores from "./pages/Eleitores";
 import Comunicacao from "./pages/Comunicacao";
 import Assistente from "./pages/Assistente";
 import Mapa from "./pages/Mapa";
+import MapaEleitoral from "./pages/MapaEleitoral";
 import Colaboradores from "./pages/Colaboradores";
 import Configuracoes from "./pages/Configuracoes";
 import NotFound from "./pages/NotFound";
@@ -31,9 +33,10 @@ const App = () => (
           <Route path="/campanhas" element={<Campanhas />} />
           <Route path="/cadastro" element={<Cadastro />} />
           <Route path="/segmentos" element={<Segmentos />} />
+          <Route path="/eleitores" element={<Eleitores />} />
           <Route path="/comunicacao" element={<Comunicacao />} />
           <Route path="/assistente" element={<Assistente />} />
-          <Route path="/mapa" element={<Mapa />} />
+          <Route path="/mapa" element={<MapaEleitoral />} />
           <Route path="/colaboradores" element={<Colaboradores />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

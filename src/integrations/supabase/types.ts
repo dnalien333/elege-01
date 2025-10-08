@@ -14,6 +14,70 @@ export type Database = {
   }
   public: {
     Tables: {
+      activities: {
+        Row: {
+          activity_date: string
+          activity_type: string
+          campaign_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          status: string | null
+          title: string
+          updated_at: string | null
+          user_id: string | null
+          voter_id: string | null
+        }
+        Insert: {
+          activity_date?: string
+          activity_type: string
+          campaign_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          user_id?: string | null
+          voter_id?: string | null
+        }
+        Update: {
+          activity_date?: string
+          activity_type?: string
+          campaign_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string | null
+          voter_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activities_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_voter_id_fkey"
+            columns: ["voter_id"]
+            isOneToOne: false
+            referencedRelation: "voters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -248,6 +312,51 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_filters: {
+        Row: {
+          campaign_id: string | null
+          created_at: string | null
+          filters: Json
+          id: string
+          name: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string | null
+          filters: Json
+          id?: string
+          name: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string | null
+          filters?: Json
+          id?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_filters_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_filters_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       segments: {
         Row: {
           campaign_id: string | null
@@ -301,6 +410,7 @@ export type Database = {
       }
       voters: {
         Row: {
+          assigned_to: string | null
           campaign_id: string | null
           city: string | null
           cpf_encrypted: string | null
@@ -309,8 +419,10 @@ export type Database = {
           email: string | null
           full_name: string
           id: string
+          last_contact_date: string | null
           latitude: number | null
           longitude: number | null
+          notes: string | null
           phone: string | null
           preferences: Json | null
           state: string | null
@@ -318,6 +430,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          assigned_to?: string | null
           campaign_id?: string | null
           city?: string | null
           cpf_encrypted?: string | null
@@ -326,8 +439,10 @@ export type Database = {
           email?: string | null
           full_name: string
           id?: string
+          last_contact_date?: string | null
           latitude?: number | null
           longitude?: number | null
+          notes?: string | null
           phone?: string | null
           preferences?: Json | null
           state?: string | null
@@ -335,6 +450,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          assigned_to?: string | null
           campaign_id?: string | null
           city?: string | null
           cpf_encrypted?: string | null
@@ -343,8 +459,10 @@ export type Database = {
           email?: string | null
           full_name?: string
           id?: string
+          last_contact_date?: string | null
           latitude?: number | null
           longitude?: number | null
+          notes?: string | null
           phone?: string | null
           preferences?: Json | null
           state?: string | null
@@ -352,6 +470,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "voters_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "voters_campaign_id_fkey"
             columns: ["campaign_id"]
