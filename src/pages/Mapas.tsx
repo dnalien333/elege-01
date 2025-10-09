@@ -235,92 +235,94 @@ export default function Mapas() {
               scrollWheelZoom={true}
               style={{ minHeight: '600px' }}
             >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <MapBoundsUpdater bounds={mapBounds} />
-              
-              {mapType === 'electoral' && voters?.map((voter) => {
-                const lat = -15.7801 + (Math.random() - 0.5) * 20;
-                const lng = -47.9292 + (Math.random() - 0.5) * 20;
+              <>
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <MapBoundsUpdater bounds={mapBounds} />
                 
-                return (
-                  <CircleMarker
-                    key={voter.id}
-                    center={[lat, lng]}
-                    radius={8}
-                    fillColor={getMarkerColor(voter.tags || [])}
-                    fillOpacity={0.7}
-                    color="#fff"
-                    weight={2}
-                  >
-                    <Popup>
-                      <div className="p-2">
-                        <h3 className="font-semibold">{voter.full_name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {voter.city}, {voter.state}
-                        </p>
-                        {voter.tags?.length > 0 && (
-                          <div className="flex gap-1 mt-2">
-                            {voter.tags.map((tag: string, i: number) => (
-                              <span key={i} className="text-xs bg-muted px-2 py-1 rounded">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </Popup>
-                  </CircleMarker>
-                );
-              })}
+                {mapType === 'electoral' && voters?.map((voter) => {
+                  const lat = -15.7801 + (Math.random() - 0.5) * 20;
+                  const lng = -47.9292 + (Math.random() - 0.5) * 20;
+                  
+                  return (
+                    <CircleMarker
+                      key={voter.id}
+                      center={[lat, lng]}
+                      radius={8}
+                      fillColor={getMarkerColor(voter.tags || [])}
+                      fillOpacity={0.7}
+                      color="#fff"
+                      weight={2}
+                    >
+                      <Popup>
+                        <div className="p-2">
+                          <h3 className="font-semibold">{voter.full_name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {voter.city}, {voter.state}
+                          </p>
+                          {voter.tags?.length > 0 && (
+                            <div className="flex gap-1 mt-2">
+                              {voter.tags.map((tag: string, i: number) => (
+                                <span key={i} className="text-xs bg-muted px-2 py-1 rounded">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </Popup>
+                    </CircleMarker>
+                  );
+                })}
 
-              {mapType === 'teams' && teams?.map((team) => {
-                const lat = -15.7801 + (Math.random() - 0.5) * 10;
-                const lng = -47.9292 + (Math.random() - 0.5) * 10;
-                
-                return (
+                {mapType === 'teams' && teams?.map((team) => {
+                  const lat = -15.7801 + (Math.random() - 0.5) * 10;
+                  const lng = -47.9292 + (Math.random() - 0.5) * 10;
+                  
+                  return (
+                    <Marker
+                      key={team.id}
+                      position={[lat, lng]}
+                      icon={createCustomIcon('#3b82f6')}
+                    >
+                      <Popup>
+                        <div className="p-2">
+                          <h3 className="font-semibold">{team.name}</h3>
+                          {team.leader && (
+                            <p className="text-sm">Líder: {team.leader.full_name}</p>
+                          )}
+                          <p className="text-sm text-muted-foreground">
+                            {team.members?.length || 0} membros
+                          </p>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+
+                {mapType === 'actions' && actions?.map((action) => (
                   <Marker
-                    key={team.id}
-                    position={[lat, lng]}
-                    icon={createCustomIcon('#3b82f6')}
+                    key={action.id}
+                    position={[Number(action.latitude), Number(action.longitude)]}
+                    icon={createCustomIcon('#f59e0b')}
                   >
                     <Popup>
                       <div className="p-2">
-                        <h3 className="font-semibold">{team.name}</h3>
-                        {team.leader && (
-                          <p className="text-sm">Líder: {team.leader.full_name}</p>
-                        )}
+                        <h3 className="font-semibold">{action.title}</h3>
+                        <p className="text-sm">{action.team?.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {team.members?.length || 0} membros
+                          {action.location_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {action.action_type} - {action.status}
                         </p>
                       </div>
                     </Popup>
                   </Marker>
-                );
-              })}
-
-              {mapType === 'actions' && actions?.map((action) => (
-                <Marker
-                  key={action.id}
-                  position={[Number(action.latitude), Number(action.longitude)]}
-                  icon={createCustomIcon('#f59e0b')}
-                >
-                  <Popup>
-                    <div className="p-2">
-                      <h3 className="font-semibold">{action.title}</h3>
-                      <p className="text-sm">{action.team?.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {action.location_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {action.action_type} - {action.status}
-                      </p>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
+                ))}
+              </>
             </MapContainer>
           )}
         </div>
