@@ -1,20 +1,34 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { MapContainer, TileLayer, CircleMarker, Marker, Popup } from 'react-leaflet';
-import { Icon } from 'leaflet';
+import { MapContainer, TileLayer, CircleMarker, Marker, Popup, useMap } from 'react-leaflet';
+import { Icon, LatLngBounds } from 'leaflet';
 import { Loader2, Printer, MapPin } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import 'leaflet/dist/leaflet.css';
 
+// Component to handle map bounds updates
+function MapBoundsUpdater({ bounds }: { bounds: LatLngBounds | null }) {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (bounds) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }, [bounds, map]);
+  
+  return null;
+}
+
 export default function Mapas() {
   const navigate = useNavigate();
   const [mapType, setMapType] = useState<'electoral' | 'teams' | 'actions'>('electoral');
   const [selectedSegment, setSelectedSegment] = useState<string>('');
   const [currentCampaignId, setCurrentCampaignId] = useState<string>('');
+  const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -134,6 +148,37 @@ export default function Mapas() {
   const defaultCenter: [number, number] = [-15.7801, -47.9292]; // Brasília
   const defaultZoom = 4;
 
+  // Calculate map bounds based on data
+  useEffect(() => {
+    const bounds = new LatLngBounds([]);
+    let hasPoints = false;
+
+    if (mapType === 'electoral' && voters?.length) {
+      voters.forEach(() => {
+        const lat = -15.7801 + (Math.random() - 0.5) * 20;
+        const lng = -47.9292 + (Math.random() - 0.5) * 20;
+        bounds.extend([lat, lng]);
+        hasPoints = true;
+      });
+    } else if (mapType === 'teams' && teams?.length) {
+      teams.forEach(() => {
+        const lat = -15.7801 + (Math.random() - 0.5) * 10;
+        const lng = -47.9292 + (Math.random() - 0.5) * 10;
+        bounds.extend([lat, lng]);
+        hasPoints = true;
+      });
+    } else if (mapType === 'actions' && actions?.length) {
+      actions.forEach((action) => {
+        if (action.latitude && action.longitude) {
+          bounds.extend([Number(action.latitude), Number(action.longitude)]);
+          hasPoints = true;
+        }
+      });
+    }
+
+    setMapBounds(hasPoints ? bounds : null);
+  }, [mapType, voters, teams, actions]);
+
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar />
@@ -188,11 +233,13 @@ export default function Mapas() {
               zoom={defaultZoom}
               className="h-full w-full"
               scrollWheelZoom={true}
+              style={{ minHeight: '600px' }}
             >
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
+              <MapBoundsUpdater bounds={mapBounds} />
               
               {mapType === 'electoral' && voters?.map((voter) => {
                 const lat = -15.7801 + (Math.random() - 0.5) * 20;
