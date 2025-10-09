@@ -125,3 +125,16 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  .sidebar, .filter-panel, button {
+    display: none !important;
+  }
+  .map-container {
+    width: 100% !important;
+    height: 100vh !important;
+  }
+  .leaflet-control-container {
+    display: none !important;
+  }
+}

@@ -33,11 +33,12 @@ const Sidebar = () => {
 
   const navItems = [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { to: "/campanhas", icon: Flag, label: "Campanhas" },
     { to: "/cadastros", icon: Users, label: "Cadastros" },
-    { to: "/mapa", icon: Map, label: "Mapa Eleitoral" },
+    { to: "/mapa", icon: Map, label: "Mapas" },
     { to: "/comunicacao", icon: MessageSquare, label: "Comunicação" },
     { to: "/assistente", icon: Bot, label: "Assistente IA" },
+    { to: "/gestao-equipe", icon: UserCog, label: "Gestão de Equipe" },
+    { to: "/colaboradores", icon: UserCog, label: "Colaboradores" },
     { to: "/configuracoes", icon: Settings, label: "Configurações" },
   ];
 

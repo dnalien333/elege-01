@@ -170,6 +170,48 @@ export type Database = {
           },
         ]
       }
+      chat_history: {
+        Row: {
+          campaign_id: string | null
+          created_at: string | null
+          id: string
+          message: string
+          role: string
+          user_id: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string | null
+          id?: string
+          message: string
+          role: string
+          user_id?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string | null
+          id?: string
+          message?: string
+          role?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_history_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communications: {
         Row: {
           approved_by: string | null
@@ -282,32 +324,47 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          city: string | null
           cpf_encrypted: string | null
           created_at: string | null
           full_name: string
           id: string
           lgpd_consent_at: string | null
+          notes: string | null
+          phone: string | null
           role: string
+          state: string | null
+          tags: string[] | null
           updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
+          city?: string | null
           cpf_encrypted?: string | null
           created_at?: string | null
           full_name: string
           id: string
           lgpd_consent_at?: string | null
+          notes?: string | null
+          phone?: string | null
           role?: string
+          state?: string | null
+          tags?: string[] | null
           updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
+          city?: string | null
           cpf_encrypted?: string | null
           created_at?: string | null
           full_name?: string
           id?: string
           lgpd_consent_at?: string | null
+          notes?: string | null
+          phone?: string | null
           role?: string
+          state?: string | null
+          tags?: string[] | null
           updated_at?: string | null
         }
         Relationships: []
@@ -408,6 +465,160 @@ export type Database = {
           },
         ]
       }
+      team_actions: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          latitude: number | null
+          location_name: string | null
+          longitude: number | null
+          scheduled_date: string | null
+          status: string | null
+          team_id: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          latitude?: number | null
+          location_name?: string | null
+          longitude?: number | null
+          scheduled_date?: string | null
+          status?: string | null
+          team_id?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          latitude?: number | null
+          location_name?: string | null
+          longitude?: number | null
+          scheduled_date?: string | null
+          status?: string | null
+          team_id?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_actions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_actions_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: string | null
+          team_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: string | null
+          team_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: string | null
+          team_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          campaign_id: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          leader_id: string | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          leader_id?: string | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          leader_id?: string | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teams_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teams_leader_id_fkey"
+            columns: ["leader_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       voters: {
         Row: {
           assigned_to: string | null
@@ -420,8 +631,6 @@ export type Database = {
           full_name: string
           id: string
           last_contact_date: string | null
-          latitude: number | null
-          longitude: number | null
           notes: string | null
           phone: string | null
           preferences: Json | null
@@ -440,8 +649,6 @@ export type Database = {
           full_name: string
           id?: string
           last_contact_date?: string | null
-          latitude?: number | null
-          longitude?: number | null
           notes?: string | null
           phone?: string | null
           preferences?: Json | null
@@ -460,8 +667,6 @@ export type Database = {
           full_name?: string
           id?: string
           last_contact_date?: string | null
-          latitude?: number | null
-          longitude?: number | null
           notes?: string | null
           phone?: string | null
           preferences?: Json | null

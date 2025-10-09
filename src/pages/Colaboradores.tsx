@@ -1,48 +1,81 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import Sidebar from "@/components/layout/Sidebar";
-import { Card, CardContent } from "@/components/ui/card";
-import { UserCog } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Plus } from 'lucide-react';
+import Sidebar from '@/components/layout/Sidebar';
+import FilterSidebar from '@/components/eleitores/FilterSidebar';
+import ColaboradorTable from '@/components/colaboradores/ColaboradorTable';
+import ColaboradorModal from '@/components/colaboradores/ColaboradorModal';
 
-const Colaboradores = () => {
+export default function Colaboradores() {
   const navigate = useNavigate();
+  const [filters, setFilters] = useState({ tags: [], city: '', state: '' });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedColaborador, setSelectedColaborador] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
-        navigate("/auth");
+        navigate('/auth');
       }
     });
   }, [navigate]);
 
+  const { data: colaboradores, isLoading } = useQuery({
+    queryKey: ['colaboradores', filters],
+    queryFn: async () => {
+      let query = supabase.from('profiles').select('*').order('full_name');
+      if (filters.tags.length) query = query.contains('tags', filters.tags);
+      if (filters.city) query = query.ilike('city', `%${filters.city}%`);
+      if (filters.state) query = query.eq('state', filters.state);
+      const { data } = await query;
+      return data;
+    }
+  });
+
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar />
-      <main className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Colaboradores
-            </h1>
-            <p className="text-muted-foreground">
-              Gerencie sua equipe de campanha
-            </p>
+      <div className="flex flex-1">
+        <FilterSidebar 
+          filters={filters} 
+          setFilters={setFilters} 
+        />
+        <main className="flex-1 p-6">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-2xl font-bold">Colaboradores</h1>
+              <p className="text-muted-foreground">Gerencie sua equipe de campanha</p>
+            </div>
+            <button
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+              onClick={() => {
+                setSelectedColaborador(null);
+                setIsModalOpen(true);
+              }}
+            >
+              <Plus className="w-4 h-4" /> Novo Colaborador
+            </button>
           </div>
-
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <UserCog className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Gestão de equipe</h3>
-              <p className="text-muted-foreground text-center">
-                Adicione e gerencie colaboradores e suas permissões
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+          <ColaboradorTable
+            colaboradores={colaboradores}
+            isLoading={isLoading}
+            onEdit={(c) => {
+              setSelectedColaborador(c);
+              setIsModalOpen(true);
+            }}
+          />
+        </main>
+      </div>
+      <ColaboradorModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedColaborador(null);
+        }}
+        colaborador={selectedColaborador}
+      />
     </div>
   );
-};
-
-export default Colaboradores;
+}

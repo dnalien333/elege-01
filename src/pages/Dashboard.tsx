@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, MessageSquare, BarChart3, TrendingUp } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import Sidebar from "@/components/layout/Sidebar";
+import { QuickActionsBar } from "@/components/QuickActionsBar";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -85,8 +85,12 @@ const Dashboard = () => {
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar />
-      <main className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
+      <main className="flex-1">
+        <QuickActionsBar 
+          openAddVoterModal={() => navigate('/cadastros')}
+          openAddColaboradorModal={() => navigate('/colaboradores')}
+        />
+        <div className="max-w-7xl mx-auto p-8 space-y-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">
               Dashboard Executivo
@@ -159,46 +163,7 @@ const Dashboard = () => {
             </Card>
           </div>
 
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Ações Rápidas</CardTitle>
-              <CardDescription>
-                Comece a trabalhar rapidamente
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-4">
-              <Button onClick={() => navigate("/cadastro")}>
-                Novo Cadastro
-              </Button>
-              <Button variant="secondary" onClick={() => navigate("/campanhas")}>
-                Nova Campanha
-              </Button>
-              <Button variant="outline" onClick={() => navigate("/segmentos")}>
-                Criar Segmento
-              </Button>
-              <Button variant="outline" onClick={() => navigate("/comunicacao")}>
-                Nova Comunicação
-              </Button>
-            </CardContent>
-          </Card>
 
-          {/* Getting Started */}
-          {stats.campaigns === 0 && (
-            <Card className="bg-primary-light border-primary">
-              <CardHeader>
-                <CardTitle>Bem-vindo! 🎉</CardTitle>
-                <CardDescription>
-                  Para começar, crie sua primeira campanha
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button onClick={() => navigate("/campanhas")}>
-                  Criar Primeira Campanha
-                </Button>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </main>
     </div>

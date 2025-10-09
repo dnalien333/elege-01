@@ -6,15 +6,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
-import Campanhas from "./pages/Campanhas";
 import Cadastro from "./pages/Cadastro";
-import Segmentos from "./pages/Segmentos";
-import Eleitores from "./pages/Eleitores";
 import Comunicacao from "./pages/Comunicacao";
 import Assistente from "./pages/Assistente";
-import Mapa from "./pages/Mapa";
 import MapaEleitoral from "./pages/MapaEleitoral";
 import Colaboradores from "./pages/Colaboradores";
+import GestaoEquipe from "./pages/GestaoEquipe";
 import Configuracoes from "./pages/Configuracoes";
 import NotFound from "./pages/NotFound";
 
@@ -30,11 +27,12 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/campanhas" element={<Campanhas />} />
           <Route path="/cadastros" element={<Cadastro />} />
           <Route path="/comunicacao" element={<Comunicacao />} />
           <Route path="/assistente" element={<Assistente />} />
           <Route path="/mapa" element={<MapaEleitoral />} />
+          <Route path="/gestao-equipe" element={<GestaoEquipe />} />
+          <Route path="/colaboradores" element={<Colaboradores />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
