@@ -7,15 +7,19 @@ import { Users, UserCog } from "lucide-react";
 import FilterSidebar from "@/components/eleitores/FilterSidebar";
 import VoterTable from "@/components/eleitores/VoterTable";
 import VoterModal from "@/components/eleitores/VoterModal";
-import { Card, CardContent } from "@/components/ui/card";
+import ColaboradorTable from "@/components/colaboradores/ColaboradorTable";
+import ColaboradorModal from "@/components/colaboradores/ColaboradorModal";
 import { useQuery } from "@tanstack/react-query";
 
 const Cadastro = () => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState({});
+  const [colaboradorFilters, setColaboradorFilters] = useState({ tags: [], city: '', state: '' });
   const [page, setPage] = useState(1);
   const [openModal, setOpenModal] = useState(false);
+  const [openColaboradorModal, setOpenColaboradorModal] = useState(false);
   const [editingVoter, setEditingVoter] = useState(null);
+  const [selectedColaborador, setSelectedColaborador] = useState(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [currentCampaignId, setCurrentCampaignId] = useState<string | null>(null);
 
@@ -46,6 +50,18 @@ const Cadastro = () => {
       setCurrentCampaignId(campaigns[0].id);
     }
   }, [campaigns, currentCampaignId]);
+
+  const { data: colaboradores, isLoading: isLoadingColaboradores } = useQuery({
+    queryKey: ['colaboradores', colaboradorFilters],
+    queryFn: async () => {
+      let query = supabase.from('profiles').select('*').order('full_name');
+      if (colaboradorFilters.tags.length) query = query.contains('tags', colaboradorFilters.tags);
+      if (colaboradorFilters.city) query = query.ilike('city', `%${colaboradorFilters.city}%`);
+      if (colaboradorFilters.state) query = query.eq('state', colaboradorFilters.state);
+      const { data } = await query;
+      return data;
+    }
+  });
 
   return (
     <div className="flex min-h-screen w-full">
@@ -103,15 +119,35 @@ const Cadastro = () => {
             </TabsContent>
 
             <TabsContent value="colaboradores" className="mt-6">
-              <Card className="border-dashed">
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <UserCog className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Gestão de equipe</h3>
-                  <p className="text-muted-foreground text-center">
-                    Adicione e gerencie colaboradores e suas permissões
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="flex gap-6 h-full">
+                <div className="w-72">
+                  <FilterSidebar
+                    filters={colaboradorFilters}
+                    setFilters={setColaboradorFilters}
+                  />
+                </div>
+                <div className="flex-1">
+                  <ColaboradorTable
+                    colaboradores={colaboradores}
+                    isLoading={isLoadingColaboradores}
+                    onEdit={(c) => {
+                      setSelectedColaborador(c);
+                      setOpenColaboradorModal(true);
+                    }}
+                  />
+                </div>
+              </div>
+
+              {openColaboradorModal && (
+                <ColaboradorModal
+                  isOpen={openColaboradorModal}
+                  onClose={() => {
+                    setOpenColaboradorModal(false);
+                    setSelectedColaborador(null);
+                  }}
+                  colaborador={selectedColaborador}
+                />
+              )}
             </TabsContent>
           </Tabs>
         </div>

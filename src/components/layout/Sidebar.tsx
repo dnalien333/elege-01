@@ -2,12 +2,10 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
   Users, 
-  Filter, 
   MessageSquare, 
   Bot, 
   Map, 
   Flag,
-  UserCog,
   Settings,
   LogOut,
   Vote
@@ -38,7 +36,6 @@ const Sidebar = () => {
     { to: "/comunicacao", icon: MessageSquare, label: "Comunicação" },
     { to: "/assistente", icon: Bot, label: "Assistente IA" },
     { to: "/gestao-equipe", icon: Flag, label: "Gestão de Equipe" },
-    { to: "/colaboradores", icon: UserCog, label: "Colaboradores" },
     { to: "/configuracoes", icon: Settings, label: "Configurações" },
   ];
 
