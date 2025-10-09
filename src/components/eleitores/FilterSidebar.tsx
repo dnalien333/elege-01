@@ -82,7 +82,7 @@ export default function FilterSidebar({ filters, setFilters, currentCampaignId }
 
   const handleApplyFilters = () => {
     const tags = selectedTags ? selectedTags.split(",").map(t => t.trim()).filter(Boolean) : [];
-    setFilters({ tags, city: selectedCity, state: selectedState });
+    setFilters({ tags, city: selectedCity, state: selectedState === "all" ? "" : selectedState });
   };
 
   const handleClearFilters = () => {
@@ -139,7 +139,7 @@ export default function FilterSidebar({ filters, setFilters, currentCampaignId }
               <SelectValue placeholder="Todos" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="AC">AC</SelectItem>
               <SelectItem value="AL">AL</SelectItem>
               <SelectItem value="AP">AP</SelectItem>

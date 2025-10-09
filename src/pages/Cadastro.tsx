@@ -8,6 +8,7 @@ import FilterSidebar from "@/components/eleitores/FilterSidebar";
 import VoterTable from "@/components/eleitores/VoterTable";
 import VoterModal from "@/components/eleitores/VoterModal";
 import { Card, CardContent } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
 
 const Cadastro = () => {
   const navigate = useNavigate();
@@ -15,14 +16,36 @@ const Cadastro = () => {
   const [page, setPage] = useState(1);
   const [openModal, setOpenModal] = useState(false);
   const [editingVoter, setEditingVoter] = useState(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [currentCampaignId, setCurrentCampaignId] = useState<string | null>(null);
+
+  const { data: campaigns } = useQuery({
+    queryKey: ["campaigns"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campaigns")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         navigate("/auth");
+      } else {
+        setUserId(session.user.id);
       }
     });
   }, [navigate]);
+
+  useEffect(() => {
+    if (campaigns && campaigns.length > 0 && !currentCampaignId) {
+      setCurrentCampaignId(campaigns[0].id);
+    }
+  }, [campaigns, currentCampaignId]);
 
   return (
     <div className="flex min-h-screen w-full">
@@ -56,6 +79,7 @@ const Cadastro = () => {
                   <FilterSidebar
                     filters={filters}
                     setFilters={setFilters}
+                    currentCampaignId={currentCampaignId || undefined}
                   />
                 </div>
                 <div className="flex-1">
@@ -63,6 +87,7 @@ const Cadastro = () => {
                     filters={filters}
                     page={page}
                     onEdit={(v) => { setEditingVoter(v); setOpenModal(true) }}
+                    currentCampaignId={currentCampaignId || undefined}
                   />
                 </div>
               </div>
@@ -71,6 +96,8 @@ const Cadastro = () => {
                 <VoterModal
                   voter={editingVoter}
                   onClose={() => { setOpenModal(false); setEditingVoter(null) }}
+                  currentCampaignId={currentCampaignId || undefined}
+                  currentUserId={userId || undefined}
                 />
               )}
             </TabsContent>
