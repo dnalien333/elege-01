@@ -31,13 +31,10 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/campanhas" element={<Campanhas />} />
-          <Route path="/cadastro" element={<Cadastro />} />
-          <Route path="/segmentos" element={<Segmentos />} />
-          <Route path="/eleitores" element={<Eleitores />} />
+          <Route path="/cadastros" element={<Cadastro />} />
           <Route path="/comunicacao" element={<Comunicacao />} />
           <Route path="/assistente" element={<Assistente />} />
           <Route path="/mapa" element={<MapaEleitoral />} />
-          <Route path="/colaboradores" element={<Colaboradores />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

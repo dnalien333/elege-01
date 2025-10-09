@@ -34,11 +34,10 @@ const Sidebar = () => {
   const navItems = [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/campanhas", icon: Flag, label: "Campanhas" },
-    { to: "/eleitores", icon: Users, label: "Eleitores" },
+    { to: "/cadastros", icon: Users, label: "Cadastros" },
     { to: "/mapa", icon: Map, label: "Mapa Eleitoral" },
     { to: "/comunicacao", icon: MessageSquare, label: "Comunicação" },
     { to: "/assistente", icon: Bot, label: "Assistente IA" },
-    { to: "/colaboradores", icon: UserCog, label: "Colaboradores" },
     { to: "/configuracoes", icon: Settings, label: "Configurações" },
   ];
 
