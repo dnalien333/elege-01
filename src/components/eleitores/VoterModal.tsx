@@ -20,8 +20,6 @@ const voterSchema = z.object({
   state: z.string().optional(),
   tags: z.string().optional(),
   notes: z.string().optional(),
-  latitude: z.string().optional(),
-  longitude: z.string().optional(),
 });
 
 type VoterFormData = z.infer<typeof voterSchema>;
@@ -50,8 +48,6 @@ export default function VoterModal({ voter, onClose, currentCampaignId, currentU
       state: voter?.state || "",
       tags: voter?.tags?.join(", ") || "",
       notes: voter?.notes || "",
-      latitude: voter?.latitude?.toString() || "",
-      longitude: voter?.longitude?.toString() || "",
     },
   });
 
@@ -66,8 +62,6 @@ export default function VoterModal({ voter, onClose, currentCampaignId, currentU
         state: data.state || null,
         tags,
         notes: data.notes || null,
-        latitude: data.latitude ? parseFloat(data.latitude) : null,
-        longitude: data.longitude ? parseFloat(data.longitude) : null,
         campaign_id: currentCampaignId,
       };
 
@@ -144,18 +138,6 @@ export default function VoterModal({ voter, onClose, currentCampaignId, currentU
               <div className="space-y-2">
                 <Label htmlFor="tags">Tags (separadas por vírgula)</Label>
                 <Input id="tags" {...register("tags")} placeholder="apoiador, voluntário, indeciso" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="latitude">Latitude</Label>
-                  <Input id="latitude" {...register("latitude")} placeholder="-23.550520" />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="longitude">Longitude</Label>
-                  <Input id="longitude" {...register("longitude")} placeholder="-46.633308" />
-                </div>
               </div>
 
               <div className="space-y-2">
