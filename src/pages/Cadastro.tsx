@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Sidebar from "@/components/layout/Sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { Users, UserCog } from "lucide-react";
 import FilterSidebar from "@/components/eleitores/FilterSidebar";
 import VoterTable from "@/components/eleitores/VoterTable";
@@ -126,7 +127,13 @@ const Cadastro = () => {
                     setFilters={setColaboradorFilters}
                   />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-lg font-semibold">Colaboradores</h2>
+                    <Button onClick={() => setOpenColaboradorModal(true)}>
+                      Novo Colaborador
+                    </Button>
+                  </div>
                   <ColaboradorTable
                     colaboradores={colaboradores}
                     isLoading={isLoadingColaboradores}
