@@ -193,10 +193,8 @@ export default function Mapas() {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-
-              {mapType === 'electoral' && voters?.map((voter, index) => {
-                // Generate sample coordinates based on city/state for demo
-                // In production, use a geocoding service
+              
+              {mapType === 'electoral' && voters?.map((voter) => {
                 const lat = -15.7801 + (Math.random() - 0.5) * 20;
                 const lng = -47.9292 + (Math.random() - 0.5) * 20;
                 
@@ -232,7 +230,6 @@ export default function Mapas() {
               })}
 
               {mapType === 'teams' && teams?.map((team) => {
-                // Use a default location for teams (can be enhanced with team locations)
                 const lat = -15.7801 + (Math.random() - 0.5) * 10;
                 const lng = -47.9292 + (Math.random() - 0.5) * 10;
                 
