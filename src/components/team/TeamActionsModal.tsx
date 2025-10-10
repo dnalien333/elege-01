@@ -15,6 +15,7 @@ export default function TeamActionsModal({ isOpen, onClose, team }: TeamActionsM
   const [actionType, setActionType] = useState('canvassing');
   const [locationName, setLocationName] = useState('');
   const [scheduledDate, setScheduledDate] = useState('');
+  const [assignedTo, setAssignedTo] = useState('');
 
   const handleSave = async () => {
     try {
@@ -27,7 +28,9 @@ export default function TeamActionsModal({ isOpen, onClose, team }: TeamActionsM
         action_type: actionType,
         location_name: locationName,
         scheduled_date: scheduledDate || null,
-        created_by: user?.user?.id
+        assigned_to: assignedTo || null,
+        created_by: user?.user?.id,
+        status: 'planned'
       });
 
       toast.success('Ação adicionada com sucesso');
@@ -36,6 +39,7 @@ export default function TeamActionsModal({ isOpen, onClose, team }: TeamActionsM
       setActionType('canvassing');
       setLocationName('');
       setScheduledDate('');
+      setAssignedTo('');
       onClose();
     } catch (error) {
       toast.error('Erro ao adicionar ação');
@@ -102,6 +106,24 @@ export default function TeamActionsModal({ isOpen, onClose, team }: TeamActionsM
               value={scheduledDate}
               onChange={(e) => setScheduledDate(e.target.value)}
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Responsável</label>
+            <select
+              className="w-full px-3 py-2 border rounded-lg"
+              value={assignedTo}
+              onChange={(e) => setAssignedTo(e.target.value)}
+            >
+              <option value="">Selecione um membro</option>
+              {team?.leader && (
+                <option value={team.leader.id}>{team.leader.full_name} (Líder)</option>
+              )}
+              {team?.members?.map((member: any) => (
+                <option key={member.user.id} value={member.user.id}>
+                  {member.user.full_name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
         <DialogFooter>

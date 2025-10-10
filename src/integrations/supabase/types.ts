@@ -468,6 +468,7 @@ export type Database = {
       team_actions: {
         Row: {
           action_type: string
+          assigned_to: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
@@ -483,6 +484,7 @@ export type Database = {
         }
         Insert: {
           action_type: string
+          assigned_to?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -498,6 +500,7 @@ export type Database = {
         }
         Update: {
           action_type?: string
+          assigned_to?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -512,6 +515,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "team_actions_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "team_actions_created_by_fkey"
             columns: ["created_by"]
