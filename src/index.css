@@ -126,6 +126,11 @@ All colors MUST be HSL.
   }
 }
 
+/* Leaflet overrides */
+.leaflet-container {
+  font-family: inherit;
+}
+
 @media print {
   .sidebar, .filter-panel, button {
     display: none !important;

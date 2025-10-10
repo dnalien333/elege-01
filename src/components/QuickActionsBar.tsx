@@ -3,11 +3,11 @@ import { Plus, ChevronDown, Users, UserPlus, FileDown, FileUp } from 'lucide-rea
 import { useNavigate } from 'react-router-dom';
 
 interface QuickActionsBarProps {
-  openAddVoterModal?: () => void;
-  openAddColaboradorModal?: () => void;
+  onOpenVoterModal?: () => void;
+  onOpenColaboradorModal?: () => void;
 }
 
-export const QuickActionsBar = ({ openAddVoterModal, openAddColaboradorModal }: QuickActionsBarProps) => {
+export default function QuickActionsBar({ onOpenVoterModal, onOpenColaboradorModal }: QuickActionsBarProps) {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const navigate = useNavigate();
   
@@ -27,7 +27,7 @@ export const QuickActionsBar = ({ openAddVoterModal, openAddColaboradorModal }: 
               <button 
                 className="w-full px-4 py-2 text-left hover:bg-muted flex items-center gap-2" 
                 onClick={() => { 
-                  if (openAddVoterModal) openAddVoterModal(); 
+                  if (onOpenVoterModal) onOpenVoterModal(); 
                   setShowAddMenu(false);
                 }}
               >
@@ -36,7 +36,7 @@ export const QuickActionsBar = ({ openAddVoterModal, openAddColaboradorModal }: 
               <button 
                 className="w-full px-4 py-2 text-left hover:bg-muted flex items-center gap-2" 
                 onClick={() => { 
-                  if (openAddColaboradorModal) openAddColaboradorModal(); 
+                  if (onOpenColaboradorModal) onOpenColaboradorModal(); 
                   setShowAddMenu(false);
                 }}
               >
@@ -60,4 +60,4 @@ export const QuickActionsBar = ({ openAddVoterModal, openAddColaboradorModal }: 
       </div>
     </div>
   );
-};
+}
