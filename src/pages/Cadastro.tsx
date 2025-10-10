@@ -53,15 +53,21 @@ const Cadastro = () => {
   }, [campaigns, currentCampaignId]);
 
   const { data: colaboradores, isLoading: isLoadingColaboradores } = useQuery({
-    queryKey: ['colaboradores', colaboradorFilters],
+    queryKey: ['colaboradores', colaboradorFilters, currentCampaignId],
     queryFn: async () => {
-      let query = supabase.from('profiles').select('*').order('full_name');
-      if (colaboradorFilters.tags.length) query = query.contains('tags', colaboradorFilters.tags);
+      if (!currentCampaignId) return [];
+      let query = supabase
+        .from('colaboradores')
+        .select('*')
+        .eq('campaign_id', currentCampaignId)
+        .order('full_name');
+      if (colaboradorFilters.tags?.length) query = query.contains('tags', colaboradorFilters.tags);
       if (colaboradorFilters.city) query = query.ilike('city', `%${colaboradorFilters.city}%`);
       if (colaboradorFilters.state) query = query.eq('state', colaboradorFilters.state);
       const { data } = await query;
       return data;
-    }
+    },
+    enabled: !!currentCampaignId,
   });
 
   return (
@@ -153,6 +159,7 @@ const Cadastro = () => {
                     setSelectedColaborador(null);
                   }}
                   colaborador={selectedColaborador}
+                  currentCampaignId={currentCampaignId || undefined}
                 />
               )}
             </TabsContent>

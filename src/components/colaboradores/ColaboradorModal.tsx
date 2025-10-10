@@ -28,9 +28,10 @@ interface ColaboradorModalProps {
   isOpen: boolean;
   onClose: () => void;
   colaborador?: any;
+  currentCampaignId?: string;
 }
 
-export default function ColaboradorModal({ isOpen, onClose, colaborador }: ColaboradorModalProps) {
+export default function ColaboradorModal({ isOpen, onClose, colaborador, currentCampaignId }: ColaboradorModalProps) {
   const queryClient = useQueryClient();
   
   const form = useForm<ColaboradorFormData>({
@@ -75,6 +76,11 @@ export default function ColaboradorModal({ isOpen, onClose, colaborador }: Colab
 
   const onSubmit = async (data: ColaboradorFormData) => {
     try {
+      if (!currentCampaignId) {
+        toast.error('Nenhuma campanha selecionada');
+        return;
+      }
+
       const tagsArray = data.tags
         ? data.tags.split(',').map(t => t.trim()).filter(Boolean)
         : [];
@@ -91,15 +97,23 @@ export default function ColaboradorModal({ isOpen, onClose, colaborador }: Colab
       };
 
       if (colaborador) {
-        await supabase
-          .from('profiles')
+        const { error } = await supabase
+          .from('colaboradores')
           .update(payload)
           .eq('id', colaborador.id);
+        
+        if (error) throw error;
         toast.success('Colaborador atualizado com sucesso');
       } else {
-        // Note: Creating new profiles requires auth signup
-        toast.error('Criação de novos colaboradores requer cadastro via autenticação');
-        return;
+        const { error } = await supabase
+          .from('colaboradores')
+          .insert([{
+            ...payload,
+            campaign_id: currentCampaignId
+          }]);
+        
+        if (error) throw error;
+        toast.success('Colaborador criado com sucesso');
       }
 
       queryClient.invalidateQueries({ queryKey: ['colaboradores'] });

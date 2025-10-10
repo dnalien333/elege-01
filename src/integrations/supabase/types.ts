@@ -212,6 +212,59 @@ export type Database = {
           },
         ]
       }
+      colaboradores: {
+        Row: {
+          campaign_id: string | null
+          city: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string
+          id: string
+          notes: string | null
+          phone: string | null
+          role: string | null
+          state: string | null
+          tags: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          city?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          state?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          city?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          state?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "colaboradores_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communications: {
         Row: {
           approved_by: string | null
