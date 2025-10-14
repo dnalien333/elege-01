@@ -6,7 +6,6 @@ import {
   Bot, 
   Map, 
   Flag,
-  Settings,
   LogOut,
   Vote
 } from "lucide-react";
@@ -36,7 +35,6 @@ const Sidebar = () => {
     { to: "/comunicacao", icon: MessageSquare, label: "Comunicação" },
     { to: "/assistente", icon: Bot, label: "Assistente IA" },
     { to: "/gestao-equipe", icon: Flag, label: "Gestão de Equipe" },
-    { to: "/configuracoes", icon: Settings, label: "Configurações" },
   ];
 
   return (
