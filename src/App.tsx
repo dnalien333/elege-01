@@ -12,6 +12,7 @@ import Assistente from "./pages/Assistente";
 import AssistenteIA from "./pages/AssistenteIA";
 import Colaboradores from "./pages/Colaboradores";
 import GestaoEquipe from "./pages/GestaoEquipe";
+import Mapas from "./pages/Mapas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/cadastros" element={<Cadastro />} />
           <Route path="/comunicacao" element={<Comunicacao />} />
           <Route path="/assistente" element={<AssistenteIA />} />
+          <Route path="/mapas" element={<Mapas />} />
           <Route path="/gestao-equipe" element={<GestaoEquipe />} />
           <Route path="/colaboradores" element={<Colaboradores />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
