@@ -9,7 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Cadastro from "./pages/Cadastro";
 import Comunicacao from "./pages/Comunicacao";
 import Assistente from "./pages/Assistente";
-import Mapas from "./pages/Mapas";
+
 import AssistenteIA from "./pages/AssistenteIA";
 import Colaboradores from "./pages/Colaboradores";
 import GestaoEquipe from "./pages/GestaoEquipe";
@@ -31,7 +31,7 @@ const App = () => (
           <Route path="/cadastros" element={<Cadastro />} />
           <Route path="/comunicacao" element={<Comunicacao />} />
           <Route path="/assistente" element={<AssistenteIA />} />
-          <Route path="/mapa" element={<Mapas />} />
+          
           <Route path="/gestao-equipe" element={<GestaoEquipe />} />
           <Route path="/colaboradores" element={<Colaboradores />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
