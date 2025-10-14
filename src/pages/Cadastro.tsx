@@ -74,6 +74,44 @@ const Cadastro = () => {
     enabled: !!currentCampaignId,
   });
 
+  const handleImportVoters = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentCampaignId) return;
+
+    try {
+      const csvText = await readFileAsText(file);
+      const rows = parseCSV(csvText);
+
+      if (rows.length === 0) {
+        toast.error('Arquivo CSV vazio');
+        return;
+      }
+
+      const votersToInsert = rows.map(row => ({
+        full_name: row.nome || row.full_name,
+        email: row.email,
+        phone: row.telefone || row.phone,
+        city: row.cidade || row.city,
+        state: row.estado || row.state,
+        electoral_section: row.seção_eleitoral || row.electoral_section,
+        tags: Array.isArray(row.tags) ? row.tags : [],
+        notes: row.notas || row.notes,
+        campaign_id: currentCampaignId
+      }));
+
+      const { error } = await supabase
+        .from('voters')
+        .insert(votersToInsert);
+
+      if (error) throw error;
+
+      toast.success(`${votersToInsert.length} eleitor(es) importado(s) com sucesso`);
+      e.target.value = '';
+    } catch (error: any) {
+      toast.error(`Erro ao importar: ${error.message}`);
+    }
+  };
+
   const handleExportColaboradores = () => {
     if (!colaboradores || colaboradores.length === 0) {
       toast.error('Nenhum colaborador para exportar');
@@ -162,8 +200,25 @@ const Cadastro = () => {
             </TabsList>
 
             <TabsContent value="eleitores" className="mt-6">
-              <div className="flex gap-6 h-full">
-                <div className="w-72">
+              <div className="space-y-4">
+                <div className="flex justify-end">
+                  <input
+                    ref={voterFileInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleImportVoters}
+                    className="hidden"
+                  />
+                  <Button 
+                    variant="outline"
+                    onClick={() => voterFileInputRef.current?.click()}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Importar CSV
+                  </Button>
+                </div>
+                <div className="flex gap-6 h-full">
+                  <div className="w-72">
                   <FilterSidebar
                     filters={filters}
                     setFilters={setFilters}
@@ -178,6 +233,7 @@ const Cadastro = () => {
                     currentCampaignId={currentCampaignId || undefined}
                   />
                 </div>
+              </div>
               </div>
 
               {openModal && (
