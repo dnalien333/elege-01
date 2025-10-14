@@ -11,36 +11,45 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 
-// Fix for default marker icons in react-leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-});
-
 const MapaEleitoral = () => {
   const navigate = useNavigate();
   const [selectedSegment, setSelectedSegment] = useState<any>(null);
   const [currentCampaignId, setCurrentCampaignId] = useState<string>("");
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    // Client-side only: Fix for default marker icons in react-leaflet
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+      iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+      shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+    });
+
+    setIsMounted(true);
+
     const initializeData = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/auth");
-        return;
-      }
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session) {
+          navigate("/auth");
+          return;
+        }
 
-      // Get first campaign for the user
-      const { data: campaigns } = await supabase
-        .from("campaigns")
-        .select("id")
-        .eq("owner_id", session.user.id)
-        .limit(1);
+        // Get first campaign for the user
+        const { data: campaigns } = await supabase
+          .from("campaigns")
+          .select("id")
+          .eq("owner_id", session.user.id)
+          .limit(1);
 
-      if (campaigns && campaigns.length > 0) {
-        setCurrentCampaignId(campaigns[0].id);
+        if (campaigns && campaigns.length > 0) {
+          setCurrentCampaignId(campaigns[0].id);
+        }
+      } catch (error) {
+        console.error("Error initializing data:", error);
       }
     };
 
@@ -50,10 +59,7 @@ const MapaEleitoral = () => {
   const { data: segments = [] } = useQuery({
     queryKey: ["saved-filters", currentCampaignId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("saved_filters")
-        .select("*")
-        .eq("campaign_id", currentCampaignId);
+      const { data, error } = await supabase.from("saved_filters").select("*").eq("campaign_id", currentCampaignId);
 
       if (error) throw error;
       return data || [];
@@ -66,38 +72,52 @@ const MapaEleitoral = () => {
     queryFn: async () => {
       if (!selectedSegment) return [];
 
-      let query = supabase
-        .from("voters")
-        .select("*")
-        .eq("campaign_id", currentCampaignId)
-        .not("latitude", "is", null)
-        .not("longitude", "is", null);
+      try {
+        let query = supabase
+          .from("voters")
+          .select("*")
+          .eq("campaign_id", currentCampaignId)
+          .not("latitude", "is", null)
+          .not("longitude", "is", null);
 
-      const filters = selectedSegment.filters as any;
-      if (filters.tags && Array.isArray(filters.tags) && filters.tags.length > 0) {
-        query = query.contains("tags", filters.tags);
-      }
-      if (filters.city) {
-        query = query.ilike("city", `%${filters.city}%`);
-      }
-      if (filters.state) {
-        query = query.eq("state", filters.state);
-      }
+        const filters = selectedSegment.filters as any;
+        if (filters.tags && Array.isArray(filters.tags) && filters.tags.length > 0) {
+          query = query.contains("tags", filters.tags);
+        }
+        if (filters.city) {
+          query = query.ilike("city", `%${filters.city}%`);
+        }
+        if (filters.state) {
+          query = query.eq("state", filters.state);
+        }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
+        const { data, error } = await query;
+        if (error) throw error;
+        return data || [];
+      } catch (error) {
+        console.error("Error fetching voters:", error);
+        return [];
+      }
     },
     enabled: !!selectedSegment && !!currentCampaignId,
   });
 
-  const getMarkerColor = (tags: string[] = []) => {
+  const getMarkerColor = (tags: string[] | undefined = []) => {
+    if (!Array.isArray(tags)) return "#6b7280";
     if (tags.includes("apoiador")) return "#22c55e";
     if (tags.includes("indeciso")) return "#eab308";
     if (tags.includes("voluntário")) return "#3b82f6";
     if (tags.includes("opositor")) return "#ef4444";
     return "#6b7280";
   };
+
+  if (!isMounted) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen w-full">
@@ -106,7 +126,7 @@ const MapaEleitoral = () => {
         <div className="p-6 bg-background border-b">
           <div className="max-w-7xl mx-auto">
             <h1 className="text-3xl font-bold text-foreground mb-4">Mapa Eleitoral</h1>
-            
+
             <div className="max-w-md space-y-2">
               <Label className="text-sm font-medium">Selecione um Segmento</Label>
               <Select
@@ -140,9 +160,7 @@ const MapaEleitoral = () => {
             <div className="absolute inset-0 flex items-center justify-center bg-muted/30">
               <Card>
                 <CardContent className="pt-6">
-                  <p className="text-muted-foreground">
-                    Selecione um segmento para visualizar os eleitores no mapa
-                  </p>
+                  <p className="text-muted-foreground">Selecione um segmento para visualizar os eleitores no mapa</p>
                 </CardContent>
               </Card>
             </div>
@@ -151,17 +169,13 @@ const MapaEleitoral = () => {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : (
-            <MapContainer
-              center={[-14.235, -51.925]}
-              zoom={4}
-              style={{ height: "100%", width: "100%" }}
-            >
+            <MapContainer center={[-14.235, -51.925]} zoom={4} style={{ height: "100%", width: "100%" }}>
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               />
               {voters
-                .filter((v: any) => v.latitude && v.longitude)
+                .filter((v: any) => v.latitude && v.longitude && v.id)
                 .map((voter: any) => (
                   <CircleMarker
                     key={voter.id}
@@ -179,13 +193,10 @@ const MapaEleitoral = () => {
                         <p className="text-sm text-muted-foreground">
                           {voter.city}, {voter.state}
                         </p>
-                        {voter.tags && voter.tags.length > 0 && (
+                        {voter.tags && Array.isArray(voter.tags) && voter.tags.length > 0 && (
                           <div className="flex gap-1 mt-2 flex-wrap">
                             {voter.tags.map((tag: string) => (
-                              <span
-                                key={tag}
-                                className="px-2 py-1 text-xs bg-secondary rounded"
-                              >
+                              <span key={tag} className="px-2 py-1 text-xs bg-secondary rounded">
                                 {tag}
                               </span>
                             ))}
