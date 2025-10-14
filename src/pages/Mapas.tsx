@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -12,11 +12,25 @@ L.Icon.Default.mergeOptions({
 });
 
 const Mapas = () => {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-background p-6 flex items-center justify-center">
+        <div className="text-lg">Carregando mapa...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">Mapa Geográfico</h1>
-        
+
         <div className="rounded-lg overflow-hidden shadow-lg" style={{ height: "calc(100vh - 200px)" }}>
           <MapContainer
             center={[-23.5505, -46.6333]} // São Paulo coordinates
@@ -28,9 +42,7 @@ const Mapas = () => {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <Marker position={[-23.5505, -46.6333]}>
-              <Popup>
-                São Paulo, Brasil
-              </Popup>
+              <Popup>São Paulo, Brasil</Popup>
             </Marker>
           </MapContainer>
         </div>
