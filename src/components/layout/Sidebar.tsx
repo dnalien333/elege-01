@@ -3,8 +3,7 @@ import {
   LayoutDashboard, 
   Users, 
   MessageSquare, 
-  Bot, 
-  Map, 
+  Bot,
   Flag,
   LogOut,
   Vote
@@ -31,7 +30,6 @@ const Sidebar = () => {
   const navItems = [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/cadastros", icon: Users, label: "Cadastros" },
-    { to: "/mapa", icon: Map, label: "Mapas" },
     { to: "/comunicacao", icon: MessageSquare, label: "Comunicação" },
     { to: "/assistente", icon: Bot, label: "Assistente IA" },
     { to: "/gestao-equipe", icon: Flag, label: "Gestão de Equipe" },
