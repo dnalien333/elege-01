@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Loader2, Users, AlertCircle } from "lucide-react";
+import { Loader2, Users, AlertCircle, Download } from "lucide-react";
+import { exportToCSV } from "@/lib/csvUtils";
 
 interface VoterTableProps {
   filters: any;
@@ -85,6 +86,28 @@ export default function VoterTable({ filters, page = 1, onEdit, currentCampaignI
     }
   };
 
+  const handleExportCSV = () => {
+    const dataToExport = selectedVoters.length > 0 
+      ? voters.filter((v: any) => selectedVoters.includes(v.id))
+      : voters;
+    
+    const headers = ['Nome', 'Email', 'Telefone', 'Cidade', 'Estado', 'Seção Eleitoral', 'Tags', 'Notas'];
+    const mappedData = dataToExport.map((v: any) => ({
+      nome: v.full_name,
+      email: v.email,
+      telefone: v.phone,
+      cidade: v.city,
+      estado: v.state,
+      seção_eleitoral: v.electoral_section,
+      tags: v.tags,
+      notas: v.notes
+    }));
+    
+    const filename = `eleitores_${new Date().toISOString().split('T')[0]}.csv`;
+    exportToCSV(mappedData, filename, headers);
+    toast.success(`${dataToExport.length} eleitor(es) exportado(s)`);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -133,7 +156,13 @@ export default function VoterTable({ filters, page = 1, onEdit, currentCampaignI
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-md"
         />
-        <Button onClick={() => onEdit(null)}>+ Novo Eleitor</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportCSV}>
+            <Download className="w-4 h-4 mr-2" />
+            Exportar CSV
+          </Button>
+          <Button onClick={() => onEdit(null)}>+ Novo Eleitor</Button>
+        </div>
       </div>
 
       <div className="border rounded-lg overflow-hidden">
@@ -197,11 +226,9 @@ export default function VoterTable({ filters, page = 1, onEdit, currentCampaignI
           <Button variant="outline" size="sm" onClick={handleBulkAddTag}>
             Adicionar Tag
           </Button>
-          <Button variant="outline" size="sm">
-            Remover Tag
-          </Button>
-          <Button variant="outline" size="sm">
-            Exportar CSV
+          <Button variant="outline" size="sm" onClick={handleExportCSV}>
+            <Download className="w-4 h-4 mr-2" />
+            Exportar Selecionados
           </Button>
         </div>
       )}
