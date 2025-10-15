@@ -96,8 +96,11 @@ export default function AddTeamModal({ isOpen, onClose, team }: AddTeamModalProp
           await supabase.from('team_members').insert({ team_id: newTeam.id, user_id: leaderId, role: 'leader' });
         }
         if (newTeam) {
+          // Only add members who are not the leader
           for (const memberId of selectedMembers) {
-            await supabase.from('team_members').insert({ team_id: newTeam.id, user_id: memberId, role: 'member' });
+            if (memberId !== leaderId) {
+              await supabase.from('team_members').insert({ team_id: newTeam.id, user_id: memberId, role: 'member' });
+            }
           }
         }
         toast.success('Equipe criada com sucesso');

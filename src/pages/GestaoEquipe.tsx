@@ -36,7 +36,7 @@ export default function GestaoEquipe() {
         .select(`
           *,
           leader:profiles!leader_id(id, full_name, avatar_url),
-          members:team_members(id, role, user:profiles(id, full_name, avatar_url, email)),
+          members:team_members(id, role, user:profiles(id, full_name, avatar_url)),
           actions:team_actions(
             id, 
             title, 
