@@ -20,6 +20,8 @@ const Cadastro = () => {
   const [filters, setFilters] = useState({});
   const [colaboradorFilters, setColaboradorFilters] = useState({ tags: [], city: '', state: '' });
   const [page, setPage] = useState(1);
+  const [voterSearchTerm, setVoterSearchTerm] = useState("");
+  const [colaboradorSearchTerm, setColaboradorSearchTerm] = useState("");
   const [openModal, setOpenModal] = useState(false);
   const [openColaboradorModal, setOpenColaboradorModal] = useState(false);
   const [editingVoter, setEditingVoter] = useState(null);
@@ -58,7 +60,7 @@ const Cadastro = () => {
   }, [campaigns, currentCampaignId]);
 
   const { data: colaboradores, isLoading: isLoadingColaboradores } = useQuery({
-    queryKey: ['colaboradores', colaboradorFilters, currentCampaignId],
+    queryKey: ['colaboradores', colaboradorFilters, currentCampaignId, colaboradorSearchTerm],
     queryFn: async () => {
       if (!currentCampaignId) return [];
       let query = supabase
@@ -69,6 +71,11 @@ const Cadastro = () => {
       if (colaboradorFilters.tags?.length) query = query.contains('tags', colaboradorFilters.tags);
       if (colaboradorFilters.city) query = query.ilike('city', `%${colaboradorFilters.city}%`);
       if (colaboradorFilters.state) query = query.eq('state', colaboradorFilters.state);
+      if (colaboradorSearchTerm) {
+        query = query.or(
+          `full_name.ilike.%${colaboradorSearchTerm}%,email.ilike.%${colaboradorSearchTerm}%,phone.ilike.%${colaboradorSearchTerm}%`
+        );
+      }
       const { data } = await query;
       return data;
     },
@@ -264,6 +271,8 @@ const Cadastro = () => {
                     filters={filters}
                     setFilters={setFilters}
                     currentCampaignId={currentCampaignId || undefined}
+                    searchTerm={voterSearchTerm}
+                    setSearchTerm={setVoterSearchTerm}
                   />
                 </div>
                 <div className="flex-1">
@@ -273,6 +282,7 @@ const Cadastro = () => {
                     onEdit={(v) => { setEditingVoter(v); setOpenModal(true) }}
                     onDelete={handleDeleteVoter}
                     currentCampaignId={currentCampaignId || undefined}
+                    searchTerm={voterSearchTerm}
                   />
                 </div>
               </div>
@@ -294,6 +304,8 @@ const Cadastro = () => {
                   <FilterSidebar
                     filters={colaboradorFilters}
                     setFilters={setColaboradorFilters}
+                    searchTerm={colaboradorSearchTerm}
+                    setSearchTerm={setColaboradorSearchTerm}
                   />
                 </div>
                 <div className="flex-1 space-y-4">

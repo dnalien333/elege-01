@@ -12,9 +12,11 @@ interface FilterSidebarProps {
   filters: any;
   setFilters: (filters: any) => void;
   currentCampaignId?: string;
+  searchTerm?: string;
+  setSearchTerm?: (term: string) => void;
 }
 
-export default function FilterSidebar({ filters, setFilters, currentCampaignId }: FilterSidebarProps) {
+export default function FilterSidebar({ filters, setFilters, currentCampaignId, searchTerm, setSearchTerm }: FilterSidebarProps) {
   const [selectedTags, setSelectedTags] = useState<string>("");
   const [selectedCity, setSelectedCity] = useState("");
   const [selectedState, setSelectedState] = useState("");
@@ -98,6 +100,17 @@ export default function FilterSidebar({ filters, setFilters, currentCampaignId }
         <CardTitle className="text-lg">Filtros</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {setSearchTerm && (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Buscar por nome</Label>
+            <Input
+              value={searchTerm || ""}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Digite o nome..."
+            />
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label className="text-sm font-medium">Segmentos Salvos</Label>
           <Select onValueChange={handleLoadSegment}>

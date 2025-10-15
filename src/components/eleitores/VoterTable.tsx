@@ -17,11 +17,11 @@ interface VoterTableProps {
   onEdit: (voter: any) => void;
   onDelete: (voter: any) => void;
   currentCampaignId?: string;
+  searchTerm?: string;
 }
 
-export default function VoterTable({ filters, page = 1, onEdit, onDelete, currentCampaignId }: VoterTableProps) {
+export default function VoterTable({ filters, page = 1, onEdit, onDelete, currentCampaignId, searchTerm = "" }: VoterTableProps) {
   const [selectedVoters, setSelectedVoters] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
   const queryClient = useQueryClient();
 
   const { data: voters = [], isLoading, error, refetch } = useQuery({
@@ -151,20 +151,12 @@ export default function VoterTable({ filters, page = 1, onEdit, onDelete, curren
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center gap-4">
-        <Input
-          placeholder="Buscar por nome, email ou telefone..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-md"
-        />
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportCSV}>
-            <Download className="w-4 h-4 mr-2" />
-            Exportar CSV
-          </Button>
-          <Button onClick={() => onEdit(null)}>+ Novo Eleitor</Button>
-        </div>
+      <div className="flex justify-end items-center gap-2">
+        <Button variant="outline" onClick={handleExportCSV}>
+          <Download className="w-4 h-4 mr-2" />
+          Exportar CSV
+        </Button>
+        <Button onClick={() => onEdit(null)}>+ Novo Eleitor</Button>
       </div>
 
       <div className="border rounded-lg overflow-hidden">
