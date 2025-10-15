@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Loader2, Users, AlertCircle, Download, MoreVertical, Edit, Trash2 } from "lucide-react";
+import { Loader2, Users, AlertCircle, Download, Upload, MoreVertical, Edit, Trash2 } from "lucide-react";
 import { exportToCSV } from "@/lib/csvUtils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -16,11 +16,12 @@ interface VoterTableProps {
   page?: number;
   onEdit: (voter: any) => void;
   onDelete: (voter: any) => void;
+  onImportCSV: () => void;
   currentCampaignId?: string;
   searchTerm?: string;
 }
 
-export default function VoterTable({ filters, page = 1, onEdit, onDelete, currentCampaignId, searchTerm = "" }: VoterTableProps) {
+export default function VoterTable({ filters, page = 1, onEdit, onDelete, onImportCSV, currentCampaignId, searchTerm = "" }: VoterTableProps) {
   const [selectedVoters, setSelectedVoters] = useState<string[]>([]);
   const queryClient = useQueryClient();
 
@@ -152,6 +153,10 @@ export default function VoterTable({ filters, page = 1, onEdit, onDelete, curren
   return (
     <div className="space-y-4">
       <div className="flex justify-end items-center gap-2">
+        <Button variant="outline" onClick={onImportCSV}>
+          <Upload className="w-4 h-4 mr-2" />
+          Importar CSV
+        </Button>
         <Button variant="outline" onClick={handleExportCSV}>
           <Download className="w-4 h-4 mr-2" />
           Exportar CSV

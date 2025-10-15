@@ -249,29 +249,13 @@ const Cadastro = () => {
 
             <TabsContent value="eleitores" className="mt-6">
               <div className="space-y-4">
-                <div className="flex justify-end gap-2">
-                  <input
-                    ref={voterFileInputRef}
-                    type="file"
-                    accept=".csv"
-                    onChange={handleImportVoters}
-                    className="hidden"
-                  />
-                  <Button 
-                    variant="outline"
-                    onClick={() => voterFileInputRef.current?.click()}
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    Importar CSV
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => toast.info('Função de exportar em breve')}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Exportar CSV
-                  </Button>
-                </div>
+                <input
+                  ref={voterFileInputRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={handleImportVoters}
+                  className="hidden"
+                />
                 <div className="flex gap-6 h-full">
                   <div className="w-72">
                   <FilterSidebar
@@ -288,6 +272,7 @@ const Cadastro = () => {
                     page={page}
                     onEdit={(v) => { setEditingVoter(v); setOpenModal(true) }}
                     onDelete={handleDeleteVoter}
+                    onImportCSV={() => voterFileInputRef.current?.click()}
                     currentCampaignId={currentCampaignId || undefined}
                     searchTerm={voterSearchTerm}
                   />
