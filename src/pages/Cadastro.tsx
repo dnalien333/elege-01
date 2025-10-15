@@ -113,6 +113,26 @@ const Cadastro = () => {
     }
   };
 
+  const deleteVoter = useMutation({
+    mutationFn: async (voterId: string) => {
+      const { error } = await supabase.from('voters').delete().eq('id', voterId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['voters'] });
+      toast.success('Eleitor excluído com sucesso');
+    },
+    onError: () => {
+      toast.error('Erro ao excluir eleitor');
+    }
+  });
+
+  const handleDeleteVoter = (voter: any) => {
+    if (confirm(`Tem certeza que deseja excluir "${voter.full_name}"?`)) {
+      deleteVoter.mutate(voter.id);
+    }
+  };
+
   const handleExportColaboradores = () => {
     if (!colaboradores || colaboradores.length === 0) {
       toast.error('Nenhum colaborador para exportar');
@@ -251,6 +271,7 @@ const Cadastro = () => {
                     filters={filters}
                     page={page}
                     onEdit={(v) => { setEditingVoter(v); setOpenModal(true) }}
+                    onDelete={handleDeleteVoter}
                     currentCampaignId={currentCampaignId || undefined}
                   />
                 </div>

@@ -7,17 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Loader2, Users, AlertCircle, Download } from "lucide-react";
+import { Loader2, Users, AlertCircle, Download, MoreVertical, Edit, Trash2 } from "lucide-react";
 import { exportToCSV } from "@/lib/csvUtils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface VoterTableProps {
   filters: any;
   page?: number;
   onEdit: (voter: any) => void;
+  onDelete: (voter: any) => void;
   currentCampaignId?: string;
 }
 
-export default function VoterTable({ filters, page = 1, onEdit, currentCampaignId }: VoterTableProps) {
+export default function VoterTable({ filters, page = 1, onEdit, onDelete, currentCampaignId }: VoterTableProps) {
   const [selectedVoters, setSelectedVoters] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const queryClient = useQueryClient();
@@ -208,9 +210,26 @@ export default function VoterTable({ filters, page = 1, onEdit, currentCampaignI
                     : "-"}
                 </TableCell>
                 <TableCell>
-                  <Button variant="outline" size="sm" onClick={() => onEdit(voter)}>
-                    Editar
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onEdit(voter)}>
+                        <Edit className="w-4 h-4 mr-2" />
+                        Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => onDelete(voter)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}
