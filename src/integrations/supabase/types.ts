@@ -635,27 +635,36 @@ export type Database = {
           campaign_id: string | null
           created_at: string | null
           created_by: string | null
+          delivery_date: string | null
           id: string
           leader_id: string | null
+          location: string | null
           name: string
+          tasks: string | null
           updated_at: string | null
         }
         Insert: {
           campaign_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          delivery_date?: string | null
           id?: string
           leader_id?: string | null
+          location?: string | null
           name: string
+          tasks?: string | null
           updated_at?: string | null
         }
         Update: {
           campaign_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          delivery_date?: string | null
           id?: string
           leader_id?: string | null
+          location?: string | null
           name?: string
+          tasks?: string | null
           updated_at?: string | null
         }
         Relationships: [
