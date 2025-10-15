@@ -72,6 +72,27 @@ export default function GestaoEquipe() {
     }
   });
 
+  const deleteTeam = useMutation({
+    mutationFn: async (teamId: string) => {
+      // Delete team members first (foreign key constraint)
+      await supabase.from('team_members').delete().eq('team_id', teamId);
+      
+      // Delete team actions
+      await supabase.from('team_actions').delete().eq('team_id', teamId);
+      
+      // Delete the team
+      const { error } = await supabase.from('teams').delete().eq('id', teamId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+      toast.success('Equipe excluída com sucesso');
+    },
+    onError: () => {
+      toast.error('Erro ao excluir equipe');
+    }
+  });
+
   const toggleTeam = (teamId: string) => {
     setExpandedTeams(prev => {
       const newSet = new Set(prev);
@@ -198,6 +219,18 @@ export default function GestaoEquipe() {
                       >
                         <Plus className="w-4 h-4 mr-1" />
                         Adicionar Ação
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`Tem certeza que deseja excluir a equipe "${team.name}"?`)) {
+                            deleteTeam.mutate(team.id);
+                          }
+                        }}
+                      >
+                        Excluir
                       </Button>
                     </div>
                   </div>
