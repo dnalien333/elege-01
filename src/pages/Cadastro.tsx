@@ -249,7 +249,7 @@ const Cadastro = () => {
 
             <TabsContent value="eleitores" className="mt-6">
               <div className="space-y-4">
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
                   <input
                     ref={voterFileInputRef}
                     type="file"
@@ -263,6 +263,13 @@ const Cadastro = () => {
                   >
                     <Upload className="w-4 h-4 mr-2" />
                     Importar CSV
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => toast.info('Função de exportar em breve')}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Exportar CSV
                   </Button>
                 </div>
                 <div className="flex gap-6 h-full">
