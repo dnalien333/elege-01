@@ -1,14 +1,17 @@
-import { Loader2, Edit } from 'lucide-react';
+import { Loader2, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 
 interface ColaboradorTableProps {
   colaboradores?: any[];
   isLoading: boolean;
   onEdit: (colaborador: any) => void;
+  onDelete: (colaborador: any) => void;
 }
 
-export default function ColaboradorTable({ colaboradores, isLoading, onEdit }: ColaboradorTableProps) {
+export default function ColaboradorTable({ colaboradores, isLoading, onEdit, onDelete }: ColaboradorTableProps) {
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -62,12 +65,26 @@ export default function ColaboradorTable({ colaboradores, isLoading, onEdit }: C
                 )}
               </TableCell>
               <TableCell className="text-right">
-                <button
-                  onClick={() => onEdit(colaborador)}
-                  className="p-2 hover:bg-muted rounded-lg"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onEdit(colaborador)}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Editar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => onDelete(colaborador)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Excluir
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </TableCell>
             </TableRow>
           ))}

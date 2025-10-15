@@ -12,10 +12,11 @@ import VoterTable from "@/components/eleitores/VoterTable";
 import VoterModal from "@/components/eleitores/VoterModal";
 import ColaboradorTable from "@/components/colaboradores/ColaboradorTable";
 import ColaboradorModal from "@/components/colaboradores/ColaboradorModal";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const Cadastro = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [filters, setFilters] = useState({});
   const [colaboradorFilters, setColaboradorFilters] = useState({ tags: [], city: '', state: '' });
   const [page, setPage] = useState(1);
@@ -173,6 +174,26 @@ const Cadastro = () => {
     }
   };
 
+  const deleteColaborador = useMutation({
+    mutationFn: async (colaboradorId: string) => {
+      const { error } = await supabase.from('colaboradores').delete().eq('id', colaboradorId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['colaboradores'] });
+      toast.success('Colaborador excluído com sucesso');
+    },
+    onError: () => {
+      toast.error('Erro ao excluir colaborador');
+    }
+  });
+
+  const handleDeleteColaborador = (colaborador: any) => {
+    if (confirm(`Tem certeza que deseja excluir "${colaborador.full_name}"?`)) {
+      deleteColaborador.mutate(colaborador.id);
+    }
+  };
+
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar />
@@ -291,6 +312,7 @@ const Cadastro = () => {
                       setSelectedColaborador(c);
                       setOpenColaboradorModal(true);
                     }}
+                    onDelete={handleDeleteColaborador}
                   />
                 </div>
               </div>

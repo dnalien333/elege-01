@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Users, Plus, ChevronDown, ChevronRight } from 'lucide-react';
+import { Loader2, Users, Plus, ChevronDown, ChevronRight, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Sidebar from '@/components/layout/Sidebar';
 import AddTeamModal from '@/components/team/AddTeamModal';
@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export default function GestaoEquipe() {
   const navigate = useNavigate();
@@ -196,18 +197,7 @@ export default function GestaoEquipe() {
                       </div>
                     </div>
                     
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedTeam(team);
-                          setIsAddTeamModalOpen(true);
-                        }}
-                      >
-                        Editar
-                      </Button>
+                    <div className="flex gap-2 items-center">
                       <Button
                         variant="default"
                         size="sm"
@@ -220,18 +210,37 @@ export default function GestaoEquipe() {
                         <Plus className="w-4 h-4 mr-1" />
                         Adicionar Ação
                       </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm(`Tem certeza que deseja excluir a equipe "${team.name}"?`)) {
-                            deleteTeam.mutate(team.id);
-                          }
-                        }}
-                      >
-                        Excluir
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTeam(team);
+                              setIsAddTeamModalOpen(true);
+                            }}
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm(`Tem certeza que deseja excluir a equipe "${team.name}"?`)) {
+                                deleteTeam.mutate(team.id);
+                              }
+                            }}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
 
