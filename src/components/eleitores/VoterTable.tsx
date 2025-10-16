@@ -152,16 +152,19 @@ export default function VoterTable({ filters, page = 1, onEdit, onDelete, onImpo
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end items-center gap-2">
-        <Button variant="outline" onClick={onImportCSV}>
-          <Upload className="w-4 h-4 mr-2" />
-          Importar CSV
-        </Button>
-        <Button variant="outline" onClick={handleExportCSV}>
-          <Download className="w-4 h-4 mr-2" />
-          Exportar CSV
-        </Button>
-        <Button onClick={() => onEdit(null)}>+ Novo Eleitor</Button>
+      <div className="flex justify-between items-center gap-2">
+        <h2 className="text-2xl font-semibold">Eleitores</h2>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={onImportCSV}>
+            <Upload className="w-4 h-4 mr-2" />
+            Importar CSV
+          </Button>
+          <Button variant="outline" onClick={handleExportCSV}>
+            <Download className="w-4 h-4 mr-2" />
+            Exportar CSV
+          </Button>
+          <Button onClick={() => onEdit(null)}>+ Novo Eleitor</Button>
+        </div>
       </div>
 
       <div className="border rounded-lg overflow-hidden">
