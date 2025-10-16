@@ -193,16 +193,6 @@ export default function FilterSidebar({ filters, setFilters, currentCampaignId, 
           </Button>
         </div>
 
-        <div className="pt-2">
-          <Button
-            onClick={handleSaveSegment}
-            variant="secondary"
-            className="w-full"
-            disabled={!selectedTags && !selectedCity && !selectedState}
-          >
-            Salvar Segmento
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );
