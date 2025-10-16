@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { MessageCircle, Send, Clock, Users, BarChart3, CheckCheck } from "lucide-react";
 import { FloatingWhatsApp } from "react-floating-whatsapp";
+import Sidebar from "@/components/layout/Sidebar";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Voter {
   id: number;
@@ -53,7 +55,14 @@ const Comunicacao = () => {
 
   useEffect(() => {
     setIsMounted(true);
-  }, []);
+    
+    // Check authentication
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate("/auth");
+      }
+    });
+  }, [navigate]);
 
   useEffect(() => {
     if (selectedSegment && messageTemplate) {
@@ -102,64 +111,25 @@ const Comunicacao = () => {
     }, 2000);
   };
 
-  const handleLogout = () => {
-    navigate("/auth");
-  };
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Top Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border">
-        <div className="max-w-[1440px] mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-8">
-              <h2 className="text-xl font-bold text-foreground">Electoral AI Platform</h2>
-              <div className="hidden md:flex items-center gap-6">
-                <button onClick={() => navigate("/dashboard")} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Dashboard
-                </button>
-                <button onClick={() => navigate("/cadastros")} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  CRM
-                </button>
-                <button onClick={() => navigate("/mapas")} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Mapas
-                </button>
-                <button onClick={() => navigate("/assistente")} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Assistente IA
-                </button>
-                <button className="text-sm font-semibold text-primary border-b-2 border-primary pb-1">
-                  Comunicação
-                </button>
-                <button onClick={handleLogout} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Sair
-                </button>
-              </div>
-            </div>
-            <Button onClick={() => setMessageTemplate("")} className="bg-[#25D366] hover:bg-[#128C7E] text-white">
-              <MessageCircle className="w-4 h-4 mr-2" />
-              Nova Mensagem
-            </Button>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <main className="pt-24 pb-12 px-6">
-        <div className="max-w-[1440px] mx-auto">
+    <div className="flex min-h-screen w-full">
+      <Sidebar />
+      <main className="flex-1 p-8">
+        <div className="max-w-7xl mx-auto space-y-8">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-5xl font-bold text-foreground mb-3">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">
               Comunicações Automatizadas
             </h1>
-            <p className="text-muted-foreground text-lg">
+            <p className="text-muted-foreground">
               Envie mensagens personalizadas via WhatsApp para seus segmentos
             </p>
           </div>
 
           {/* Two Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Section - Message Composer */}
-            <div className="lg:col-span-3 space-y-6">
+            <div className="lg:col-span-2 space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -278,7 +248,7 @@ const Comunicacao = () => {
             </div>
 
             {/* Right Section - WhatsApp Preview & Stats */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-1 space-y-6">
               {/* Stats Card */}
               <Card className="bg-gradient-to-br from-[#25D366]/10 to-[#128C7E]/10 border-[#25D366]/20">
                 <CardHeader>
