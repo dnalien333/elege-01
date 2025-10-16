@@ -14,11 +14,8 @@ import Colaboradores from "./pages/Colaboradores";
 import GestaoEquipe from "./pages/GestaoEquipe";
 import Mapas from "./pages/Mapas";
 import NotFound from "./pages/NotFound";
-
 const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+const App = () => <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -28,7 +25,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/cadastros" element={<Cadastro />} />
-          <Route path="/comunicacao" element={<Comunicacao />} />
+          <Route path="/comunicacao" element={<Comunicacao />} className="flex-auto " />
           <Route path="/assistente" element={<AssistenteIA />} />
           <Route path="/mapas" element={<Mapas />} />
           <Route path="/gestao-equipe" element={<GestaoEquipe />} />
@@ -38,7 +35,5 @@ const App = () => (
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
-  </QueryClientProvider>
-);
-
+  </QueryClientProvider>;
 export default App;
