@@ -1,195 +1,373 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import Sidebar from "@/components/layout/Sidebar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { MessageCircle, Send, Clock, Users, BarChart3, CheckCheck } from "lucide-react";
+import { FloatingWhatsApp } from "react-floating-whatsapp";
+
+interface Voter {
+  id: number;
+  name: string;
+  city: string;
+  state: string;
+  segment: string;
+  phone: string;
+}
+
+interface Segment {
+  id: string;
+  name: string;
+  count: number;
+  greeting: string;
+}
+
+const mockVoters: Voter[] = [
+  { id: 1, name: "João Silva", city: "São Paulo", state: "SP", segment: "Apoiadores", phone: "11999999001" },
+  { id: 2, name: "Maria Santos", city: "Rio de Janeiro", state: "RJ", segment: "Indecisos", phone: "21999999002" },
+  { id: 3, name: "Pedro Oliveira", city: "Belo Horizonte", state: "MG", segment: "Voluntários", phone: "31999999003" },
+  { id: 4, name: "Ana Costa", city: "Salvador", state: "BA", segment: "Apoiadores", phone: "71999999004" },
+  { id: 5, name: "Carlos Souza", city: "Brasília", state: "DF", segment: "Indecisos", phone: "61999999005" },
+  { id: 6, name: "Julia Ferreira", city: "Curitiba", state: "PR", segment: "Voluntários", phone: "41999999006" },
+  { id: 7, name: "Roberto Lima", city: "Recife", state: "PE", segment: "Apoiadores", phone: "81999999007" },
+  { id: 8, name: "Fernanda Alves", city: "Porto Alegre", state: "RS", segment: "Indecisos", phone: "51999999008" },
+  { id: 9, name: "Lucas Martins", city: "Fortaleza", state: "CE", segment: "Voluntários", phone: "85999999009" },
+  { id: 10, name: "Patricia Rocha", city: "Manaus", state: "AM", segment: "Apoiadores", phone: "92999999010" },
+];
+
+const mockSegments: Segment[] = [
+  { id: "apoiadores", name: "Apoiadores", count: 50, greeting: "Vamos vencer juntos! 🎉" },
+  { id: "indecisos", name: "Indecisos", count: 30, greeting: "Tire suas dúvidas sobre nossa campanha" },
+  { id: "voluntarios", name: "Voluntários", count: 20, greeting: "Obrigado por fazer parte da equipe! 💪" },
+];
 
 const Comunicacao = () => {
   const navigate = useNavigate();
-  const [selectedSegment, setSelectedSegment] = useState<any>(null);
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
-  const [currentCampaignId, setCurrentCampaignId] = useState<string>("");
+  const [isMounted, setIsMounted] = useState(false);
+  const [selectedSegment, setSelectedSegment] = useState<Segment | null>(null);
+  const [messageTemplate, setMessageTemplate] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [previewMessages, setPreviewMessages] = useState<string[]>([]);
 
   useEffect(() => {
-    const initializeData = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/auth");
-        return;
-      }
+    setIsMounted(true);
+  }, []);
 
-      // Get first campaign for the user
-      const { data: campaigns } = await supabase
-        .from("campaigns")
-        .select("id")
-        .eq("owner_id", session.user.id)
-        .limit(1);
+  useEffect(() => {
+    if (selectedSegment && messageTemplate) {
+      generatePreview();
+    }
+  }, [messageTemplate, selectedSegment]);
 
-      if (campaigns && campaigns.length > 0) {
-        setCurrentCampaignId(campaigns[0].id);
-      }
-    };
+  const generatePreview = () => {
+    const segmentVoters = mockVoters.filter(v => 
+      v.segment.toLowerCase() === selectedSegment?.name.toLowerCase()
+    ).slice(0, 3);
 
-    initializeData();
-  }, [navigate]);
+    const previews = segmentVoters.map(voter => {
+      return messageTemplate
+        .replace(/\[Nome\]/g, voter.name)
+        .replace(/\[Cidade\]/g, voter.city)
+        .replace(/\[Estado\]/g, voter.state)
+        .replace(/\[Partido\]/g, "Nossa Campanha");
+    });
 
-  const { data: segments = [] } = useQuery({
-    queryKey: ["saved-filters", currentCampaignId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("saved_filters")
-        .select("*")
-        .eq("campaign_id", currentCampaignId);
-
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!currentCampaignId,
-  });
-
-  const { data: voterCount = 0 } = useQuery({
-    queryKey: ["segment-count", selectedSegment],
-    queryFn: async () => {
-      if (!selectedSegment) return 0;
-
-      let query = supabase
-        .from("voters")
-        .select("*", { count: "exact", head: true })
-        .eq("campaign_id", currentCampaignId);
-
-      const filters = selectedSegment.filters as any;
-      if (filters.tags && Array.isArray(filters.tags) && filters.tags.length > 0) {
-        query = query.contains("tags", filters.tags);
-      }
-      if (filters.city) {
-        query = query.ilike("city", `%${filters.city}%`);
-      }
-      if (filters.state) {
-        query = query.eq("state", filters.state);
-      }
-
-      const { count } = await query;
-      return count || 0;
-    },
-    enabled: !!selectedSegment && !!currentCampaignId,
-  });
-
-  const insertMergeTag = (tag: string) => {
-    setBody(body + `{{${tag}}}`);
+    setPreviewMessages(previews);
   };
 
-  const handleSend = () => {
-    console.log("Sending email to", voterCount, "voters");
-    console.log("Subject:", subject);
-    console.log("Body:", body);
-    toast.success(`Email enviado para ${voterCount} eleitores!`);
+  const insertMergeTag = (tag: string) => {
+    setMessageTemplate(prev => prev + `[${tag}]`);
+  };
+
+  const handleSendMessage = async () => {
+    if (!selectedSegment) {
+      toast.error("Por favor, selecione um segmento");
+      return;
+    }
+    if (!messageTemplate.trim()) {
+      toast.error("Digite uma mensagem para enviar");
+      return;
+    }
+
+    setIsSending(true);
+    
+    // Simulate sending delay
+    setTimeout(() => {
+      setIsSending(false);
+      toast.success(`Mensagem enviada para ${selectedSegment.count} eleitores via WhatsApp! ✅`);
+      setMessageTemplate("");
+      setPreviewMessages([]);
+    }, 2000);
+  };
+
+  const handleLogout = () => {
+    navigate("/auth");
   };
 
   return (
-    <div className="flex min-h-screen w-full">
-      <Sidebar />
-      <main className="flex-1 p-8">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Comunicação
+    <div className="min-h-screen bg-background">
+      {/* Top Navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border">
+        <div className="max-w-[1440px] mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-8">
+              <h2 className="text-xl font-bold text-foreground">Electoral AI Platform</h2>
+              <div className="hidden md:flex items-center gap-6">
+                <button onClick={() => navigate("/dashboard")} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  Dashboard
+                </button>
+                <button onClick={() => navigate("/cadastros")} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  CRM
+                </button>
+                <button onClick={() => navigate("/mapas")} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  Mapas
+                </button>
+                <button onClick={() => navigate("/assistente")} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  Assistente IA
+                </button>
+                <button className="text-sm font-semibold text-primary border-b-2 border-primary pb-1">
+                  Comunicação
+                </button>
+                <button onClick={handleLogout} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  Sair
+                </button>
+              </div>
+            </div>
+            <Button onClick={() => setMessageTemplate("")} className="bg-[#25D366] hover:bg-[#128C7E] text-white">
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Nova Mensagem
+            </Button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="pt-24 pb-12 px-6">
+        <div className="max-w-[1440px] mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-5xl font-bold text-foreground mb-3">
+              Comunicações Automatizadas
             </h1>
-            <p className="text-muted-foreground">
-              Envie mensagens para segmentos específicos
+            <p className="text-muted-foreground text-lg">
+              Envie mensagens personalizadas via WhatsApp para seus segmentos
             </p>
           </div>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Selecionar Segmento</Label>
-              <Select
-                onValueChange={(value) =>
-                  setSelectedSegment(segments.find((s: any) => s.id === value))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="-- Escolha um segmento --" />
-                </SelectTrigger>
-                <SelectContent>
-                  {segments.map((segment: any) => (
-                    <SelectItem key={segment.id} value={segment.id}>
-                      {segment.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {voterCount > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Esta mensagem será enviada para {voterCount} eleitores
-                </p>
-              )}
+          {/* Two Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            {/* Left Section - Message Composer */}
+            <div className="lg:col-span-3 space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Selecionar Segmento
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Select
+                    onValueChange={(value) => {
+                      const segment = mockSegments.find(s => s.id === value);
+                      setSelectedSegment(segment || null);
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="-- Escolha um segmento --" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockSegments.map((segment) => (
+                        <SelectItem key={segment.id} value={segment.id}>
+                          {segment.name} ({segment.count} eleitores)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedSegment && (
+                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Esta mensagem será enviada para {selectedSegment.count} eleitores
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageCircle className="w-5 h-5" />
+                    Modelo de Mensagem
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => insertMergeTag("Nome")}
+                    >
+                      [Nome]
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => insertMergeTag("Cidade")}
+                    >
+                      [Cidade]
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => insertMergeTag("Estado")}
+                    >
+                      [Estado]
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => insertMergeTag("Partido")}
+                    >
+                      [Partido]
+                    </Button>
+                  </div>
+
+                  <Textarea
+                    value={messageTemplate}
+                    onChange={(e) => setMessageTemplate(e.target.value)}
+                    placeholder="Olá [Nome], junte-se à campanha em [Cidade]!"
+                    rows={12}
+                    maxLength={500}
+                    disabled={isSending}
+                  />
+                  
+                  <div className="flex justify-between items-center text-sm text-muted-foreground">
+                    <span>{messageTemplate.length}/500 caracteres</span>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={!selectedSegment || !messageTemplate.trim() || isSending}
+                      className="bg-[#25D366] hover:bg-[#128C7E] text-white"
+                    >
+                      {isSending ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" />
+                          Enviar WhatsApp
+                        </>
+                      )}
+                    </Button>
+                    <Button variant="outline" disabled={isSending}>
+                      <Clock className="w-4 h-4 mr-2" />
+                      Agendar Envio
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Assunto</Label>
-              <Input
-                type="text"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="Digite o assunto do email"
-              />
-            </div>
+            {/* Right Section - WhatsApp Preview & Stats */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Stats Card */}
+              <Card className="bg-gradient-to-br from-[#25D366]/10 to-[#128C7E]/10 border-[#25D366]/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-[#128C7E]">
+                    <BarChart3 className="w-5 h-5" />
+                    Estatísticas
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Mensagens Hoje</span>
+                    <span className="text-2xl font-bold text-foreground">120</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Taxa de Resposta</span>
+                    <span className="text-2xl font-bold text-[#25D366]">85%</span>
+                  </div>
+                </CardContent>
+              </Card>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Mensagem</Label>
-              <div className="flex gap-2 mb-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => insertMergeTag("name")}
-                >
-                  Inserir nome
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => insertMergeTag("city")}
-                >
-                  Inserir cidade
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => insertMergeTag("state")}
-                >
-                  Inserir estado
-                </Button>
-              </div>
-              <Textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder="Escreva sua mensagem aqui. Use tags de mesclagem para personalizar."
-                rows={12}
-              />
-            </div>
+              {/* WhatsApp Preview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageCircle className="w-5 h-5 text-[#25D366]" />
+                    Preview WhatsApp
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-[#e5ddd5] rounded-lg p-4 min-h-[400px] relative" style={{
+                    backgroundImage: "url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxkZWZzPjxwYXR0ZXJuIGlkPSJncmlkIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiPjxyZWN0IHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0iI2U1ZGRkNSIvPjxwYXRoIGQ9Ik0gNDAgMCBMIDAgMCAwIDQwIiBmaWxsPSJub25lIiBzdHJva2U9IiNkNWNkYzUiIHN0cm9rZS13aWR0aD0iMC41Ii8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')"
+                  }}>
+                    {/* Header */}
+                    <div className="bg-[#128C7E] text-white p-3 -m-4 mb-4 rounded-t-lg flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                        <Users className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="font-semibold">
+                          {selectedSegment?.name || "Selecione um segmento"}
+                        </div>
+                        <div className="text-xs text-white/80">online</div>
+                      </div>
+                    </div>
 
-            <div className="flex gap-3 pt-4">
-              <Button
-                onClick={handleSend}
-                disabled={!selectedSegment || !subject || !body}
-              >
-                Enviar Mensagem
-              </Button>
-              <Button variant="outline">Visualizar</Button>
+                    {/* Messages */}
+                    <div className="space-y-3 pt-4">
+                      {previewMessages.length > 0 ? (
+                        previewMessages.map((msg, idx) => (
+                          <div key={idx} className="flex justify-end">
+                            <div className="bg-[#dcf8c6] rounded-lg p-3 max-w-[80%] shadow-sm">
+                              <p className="text-sm text-gray-800 whitespace-pre-wrap">{msg}</p>
+                              <div className="flex items-center justify-end gap-1 mt-1">
+                                <span className="text-xs text-gray-600">
+                                  {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                <CheckCheck className="w-4 h-4 text-blue-500" />
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center text-muted-foreground py-12">
+                          <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                          <p className="text-sm">Digite uma mensagem para ver o preview</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
       </main>
+
+      {/* WhatsApp Floating Widget */}
+      {isMounted && (
+        <FloatingWhatsApp
+          phoneNumber="5511999999999"
+          accountName="Electoral AI Platform"
+          statusMessage="Online"
+          chatMessage={selectedSegment?.greeting || "Olá! Como posso ajudar com sua campanha?"}
+          placeholder="Digite sua mensagem..."
+          avatar="/placeholder.svg"
+          allowClickAway
+          allowEsc
+        />
+      )}
     </div>
   );
 };
