@@ -318,6 +318,7 @@ export default function Mapas() {
                     </div>
                   ) : (
                     <MapContainer
+                      key="voter-map"
                       center={[-14.235, -51.925]}
                       zoom={4}
                       style={{ height: "100%", width: "100%" }}
