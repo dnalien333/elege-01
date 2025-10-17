@@ -1,399 +1,376 @@
-import { useState, useMemo, useEffect } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import { Map as MapIcon, Search, X, Users, Vote, TrendingUp } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import Sidebar from "@/components/layout/Sidebar";
-import { mockElectionData, candidates, parties, MunicipalityData } from "@/data/mockElectionData";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { MapPin, Users, Filter } from "lucide-react";
+import { toast } from "sonner";
+import "leaflet/dist/leaflet.css";
+import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
 
-const getColorByPercentage = (percentage: number): string => {
-  if (percentage >= 50) return "#22c55e"; // green-500
-  if (percentage >= 40) return "#84cc16"; // lime-500
-  if (percentage >= 30) return "#eab308"; // yellow-500
-  if (percentage >= 20) return "#f97316"; // orange-500
-  return "#ef4444"; // red-500
+// Types
+interface Voter {
+  id: string;
+  full_name: string;
+  latitude?: number;
+  longitude?: number;
+  city?: string;
+  state?: string;
+  tags?: string[];
+  campaign_id?: string;
+}
+
+// Tag color mapping
+const getTagColor = (tags: string[] | undefined): string => {
+  if (!tags || tags.length === 0) return "#9CA3AF"; // gray
+  
+  const tag = tags[0]?.toLowerCase();
+  switch (tag) {
+    case "apoiador":
+      return "#22C55E"; // green
+    case "indeciso":
+      return "#EAB308"; // yellow
+    case "voluntário":
+    case "voluntario":
+      return "#3B82F6"; // blue
+    case "opositor":
+      return "#EF4444"; // red
+    default:
+      return "#9CA3AF"; // gray
+  }
 };
 
-const Mapas = () => {
+const getTagLabel = (color: string): string => {
+  switch (color) {
+    case "#22C55E":
+      return "Apoiador";
+    case "#EAB308":
+      return "Indeciso";
+    case "#3B82F6":
+      return "Voluntário";
+    case "#EF4444":
+      return "Opositor";
+    default:
+      return "Sem tag";
+  }
+};
+
+// Mock data generator
+const generateMockVoters = (): Voter[] => {
+  const states = ["SP", "RJ", "MG", "BA", "PR", "RS", "PE", "CE", "PA", "SC"];
+  const cities = [
+    "São Paulo", "Rio de Janeiro", "Belo Horizonte", "Salvador", "Curitiba",
+    "Porto Alegre", "Recife", "Fortaleza", "Belém", "Florianópolis"
+  ];
+  const tags = ["apoiador", "indeciso", "voluntário", "opositor"];
+  const names = [
+    "João Silva", "Maria Santos", "Pedro Oliveira", "Ana Costa", "Carlos Souza",
+    "Juliana Lima", "Roberto Alves", "Fernanda Rocha", "Lucas Martins", "Patricia Ferreira"
+  ];
+
+  const voters: Voter[] = [];
+  for (let i = 0; i < 50; i++) {
+    const stateIndex = Math.floor(Math.random() * states.length);
+    voters.push({
+      id: `mock-${i}`,
+      full_name: names[Math.floor(Math.random() * names.length)] + ` ${i}`,
+      latitude: -33 + Math.random() * 28, // Brazil latitude range
+      longitude: -73.5 + Math.random() * 35, // Brazil longitude range
+      city: cities[stateIndex],
+      state: states[stateIndex],
+      tags: [tags[Math.floor(Math.random() * tags.length)]],
+      campaign_id: "mock-campaign"
+    });
+  }
+  return voters;
+};
+
+export default function Mapas() {
+  const navigate = useNavigate();
   const [isMounted, setIsMounted] = useState(false);
-  const [selectedCandidate, setSelectedCandidate] = useState<string>("all");
-  const [selectedParty, setSelectedParty] = useState<string>("all");
-  const [selectedTurno, setSelectedTurno] = useState<1 | 2>(1);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTag, setSelectedTag] = useState<string>("all");
+  const [selectedState, setSelectedState] = useState<string>("all");
 
+  // Check authentication
   useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/auth");
+      }
+    };
+    checkAuth();
     setIsMounted(true);
-  }, []);
+  }, [navigate]);
 
-  const filteredData = useMemo(() => {
-    return mockElectionData
-      .map((municipality) => {
-        const relevantVotes = municipality.votes.filter(
-          (vote) =>
-            vote.turno === selectedTurno &&
-            (selectedCandidate === "all" || vote.candidate === selectedCandidate) &&
-            (selectedParty === "all" || vote.party === selectedParty)
-        );
+  // Fetch voters from Supabase
+  const { data: voters = [], isLoading, error } = useQuery({
+    queryKey: ["voters"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("voters")
+        .select("id, full_name, city, state, tags, campaign_id");
+      
+      if (error) {
+        console.error("Error fetching voters:", error);
+      }
 
-        if (relevantVotes.length === 0) return null;
+      // Always use mock data for demo (voters table doesn't have lat/long)
+      toast.info("Usando dados de demonstração");
+      return generateMockVoters();
+    },
+  });
 
-        const topVote = relevantVotes.reduce((prev, current) =>
-          prev.percentage > current.percentage ? prev : current
-        );
+  // Filter voters
+  const filteredVoters = useMemo(() => {
+    return voters.filter((voter) => {
+      const matchesSearch = 
+        searchQuery === "" ||
+        voter.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        voter.city?.toLowerCase().includes(searchQuery.toLowerCase());
 
-        return {
-          ...municipality,
-          topVote,
-        };
-      })
-      .filter((item) => item !== null)
-      .filter((item) =>
-        searchQuery
-          ? item!.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item!.state.toLowerCase().includes(searchQuery.toLowerCase())
-          : true
-      ) as (MunicipalityData & { topVote: MunicipalityData["votes"][0] })[];
-  }, [selectedCandidate, selectedParty, selectedTurno, searchQuery]);
+      const matchesTag = 
+        selectedTag === "all" ||
+        voter.tags?.some(tag => tag.toLowerCase() === selectedTag.toLowerCase());
 
-  const statistics = useMemo(() => {
-    const totalMunicipalities = filteredData.length;
-    const totalVotes = filteredData.reduce((sum, item) => sum + item.topVote.totalVotes, 0);
-    const topMunicipalities = [...filteredData]
-      .sort((a, b) => b.topVote.percentage - a.topVote.percentage)
-      .slice(0, 5);
+      const matchesState = 
+        selectedState === "all" ||
+        voter.state === selectedState;
 
-    return { totalMunicipalities, totalVotes, topMunicipalities };
-  }, [filteredData]);
+      return matchesSearch && matchesTag && matchesState;
+    });
+  }, [voters, searchQuery, selectedTag, selectedState]);
 
-  const clearFilters = () => {
-    setSelectedCandidate("all");
-    setSelectedParty("all");
-    setSelectedTurno(1);
-    setSearchQuery("");
-  };
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const total = filteredVoters.length;
+    const byTag = filteredVoters.reduce((acc, voter) => {
+      const tag = voter.tags?.[0]?.toLowerCase() || "sem tag";
+      acc[tag] = (acc[tag] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
 
-  const hasActiveFilters = selectedCandidate !== "all" || selectedParty !== "all" || searchQuery !== "";
+    return { total, byTag };
+  }, [filteredVoters]);
+
+  // Get unique states and tags
+  const uniqueStates = useMemo(() => 
+    Array.from(new Set(voters.map(v => v.state).filter(Boolean))).sort(),
+    [voters]
+  );
+
+  const uniqueTags = useMemo(() => 
+    Array.from(new Set(voters.flatMap(v => v.tags || []))).sort(),
+    [voters]
+  );
+
+  if (!isMounted) {
+    return null;
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen w-full">
+        <Sidebar />
+        <main className="flex-1 p-8 w-full">
+          <div className="text-center text-destructive">
+            Erro ao carregar dados. Por favor, tente novamente.
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
+    <div className="flex min-h-screen w-full">
       <Sidebar />
-      
-      <main className="flex-1 overflow-hidden">
-        {/* Header */}
-        <div className="border-b border-border bg-card">
-          <div className="p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="bg-accent rounded-lg p-2">
-                <MapIcon className="h-6 w-6 text-accent-foreground" />
-              </div>
-              <h1 className="text-3xl font-bold text-foreground">Mapa Eleitoral</h1>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Visualização georreferenciada dos resultados eleitorais por município
+      <main className="flex-1 p-8 w-full overflow-auto">
+        <div className="w-full space-y-6">
+          {/* Header */}
+          <div>
+            <h1 className="text-4xl font-bold text-foreground mb-2">
+              Mapas de Calor Eleitoral
+            </h1>
+            <p className="text-muted-foreground">
+              Visualização georreferenciada dos eleitores por localização e tags
             </p>
           </div>
 
           {/* Filters */}
-          <div className="px-6 pb-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Select value={selectedCandidate} onValueChange={setSelectedCandidate}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos os Candidatos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os Candidatos</SelectItem>
-                  {candidates.map((candidate) => (
-                    <SelectItem key={candidate} value={candidate}>
-                      {candidate}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedParty} onValueChange={setSelectedParty}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos os Partidos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os Partidos</SelectItem>
-                  {parties.map((party) => (
-                    <SelectItem key={party} value={party}>
-                      {party}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedTurno.toString()} onValueChange={(val) => setSelectedTurno(parseInt(val) as 1 | 2)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1º Turno</SelectItem>
-                  <SelectItem value="2">2º Turno</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar município..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-9"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filtrar Eleitores
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Input
+                    placeholder="Buscar por nome ou cidade..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <Select value={selectedTag} onValueChange={setSelectedTag}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas as tags" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as tags</SelectItem>
+                      {uniqueTags.map(tag => (
+                        <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Select value={selectedState} onValueChange={setSelectedState}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos os estados" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os estados</SelectItem>
+                      {uniqueStates.map(state => (
+                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            {hasActiveFilters && (
-              <div className="mt-3 flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Filtros ativos:</span>
-                {selectedCandidate !== "all" && (
-                  <Badge variant="secondary">{selectedCandidate}</Badge>
-                )}
-                {selectedParty !== "all" && (
-                  <Badge variant="secondary">{selectedParty}</Badge>
-                )}
-                {searchQuery && (
-                  <Badge variant="secondary">"{searchQuery}"</Badge>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearFilters}
-                  className="h-7 text-xs"
-                >
-                  Limpar filtros
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="flex h-[calc(100vh-240px)] gap-4 p-6">
-          {/* Statistics Sidebar */}
-          <div className="w-80 space-y-4 overflow-y-auto">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <MapIcon className="h-5 w-5" />
-                  Estatísticas
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">Municípios Exibidos</div>
-                  <div className="text-2xl font-bold text-foreground flex items-center gap-2">
-                    <MapIcon className="h-5 w-5 text-primary" />
-                    {statistics.totalMunicipalities}
+          {/* Main Content: Map + Stats */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Stats Sidebar */}
+            <div className="lg:col-span-1 space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Users className="h-5 w-5" />
+                    Estatísticas
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total de Eleitores</p>
+                    <p className="text-3xl font-bold">{stats.total}</p>
                   </div>
-                </div>
-
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">Total de Votos</div>
-                  <div className="text-2xl font-bold text-foreground flex items-center gap-2">
-                    <Vote className="h-5 w-5 text-primary" />
-                    {statistics.totalVotes.toLocaleString("pt-BR")}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">Turno Selecionado</div>
-                  <Badge variant="outline" className="text-base">
-                    {selectedTurno}º Turno
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Top 5 Municípios
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {statistics.topMunicipalities.map((municipality, index) => (
-                    <div key={municipality.id} className="flex items-center gap-3">
-                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-foreground truncate">
-                          {municipality.name} - {municipality.state}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {municipality.topVote.candidate} ({municipality.topVote.party})
-                        </div>
-                      </div>
-                      <div className="flex-shrink-0">
-                        <Badge
-                          style={{
-                            backgroundColor: getColorByPercentage(municipality.topVote.percentage),
-                            color: "white",
+                  
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Por Tag:</p>
+                    {Object.entries(stats.byTag).map(([tag, count]) => (
+                      <div key={tag} className="flex justify-between items-center">
+                        <Badge 
+                          style={{ 
+                            backgroundColor: getTagColor([tag]),
+                            color: "white"
                           }}
                         >
-                          {municipality.topVote.percentage}%
+                          {tag}
                         </Badge>
+                        <span className="font-semibold">{count}</span>
                       </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Color Legend */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <MapPin className="h-5 w-5" />
+                    Legenda
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {["#22C55E", "#EAB308", "#3B82F6", "#EF4444", "#9CA3AF"].map(color => (
+                    <div key={color} className="flex items-center gap-2">
+                      <div 
+                        className="w-4 h-4 rounded-full" 
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="text-sm">{getTagLabel(color)}</span>
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Legenda de Cores</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: "#22c55e" }} />
-                    <span className="text-sm text-foreground">≥ 50% - Alta Aprovação</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: "#84cc16" }} />
-                    <span className="text-sm text-foreground">40-49% - Aprovação Boa</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: "#eab308" }} />
-                    <span className="text-sm text-foreground">30-39% - Aprovação Moderada</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: "#f97316" }} />
-                    <span className="text-sm text-foreground">20-29% - Aprovação Baixa</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: "#ef4444" }} />
-                    <span className="text-sm text-foreground">&lt; 20% - Aprovação Muito Baixa</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Map Container */}
-          <div className="flex-1 bg-card rounded-lg border border-border overflow-hidden">
-            {!isMounted ? (
-              <div className="h-full flex items-center justify-center">
-                <div className="text-center space-y-3">
-                  <MapIcon className="h-12 w-12 text-muted-foreground mx-auto animate-pulse" />
-                  <p className="text-muted-foreground">Carregando mapa...</p>
-                </div>
-              </div>
-            ) : filteredData.length === 0 ? (
-              <div className="h-full flex items-center justify-center">
-                <div className="text-center space-y-3">
-                  <MapIcon className="h-12 w-12 text-muted-foreground mx-auto" />
-                  <p className="text-foreground font-medium">Nenhum município encontrado</p>
-                  <p className="text-sm text-muted-foreground">
-                    Ajuste os filtros para visualizar os dados
-                  </p>
-                  <Button onClick={clearFilters} variant="outline" size="sm">
-                    Limpar filtros
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <MapContainer
-                center={[-14.235, -51.925]}
-                zoom={5}
-                style={{ height: "100%", width: "100%" }}
-                scrollWheelZoom={true}
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-
-                {filteredData.map((municipality) => (
-                  <CircleMarker
-                    key={municipality.id}
-                    center={municipality.coordinates}
-                    radius={Math.sqrt(municipality.topVote.totalVotes / 10000)}
-                    fillColor={getColorByPercentage(municipality.topVote.percentage)}
-                    color="#fff"
-                    weight={2}
-                    opacity={1}
-                    fillOpacity={0.7}
-                  >
-                    <Popup>
-                      <div className="p-2 min-w-[200px]">
-                        <h3 className="font-bold text-base mb-1">
-                          {municipality.name} - {municipality.state}
-                        </h3>
-                        <div className="space-y-2 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Candidato:</span>{" "}
-                            <span className="font-medium">{municipality.topVote.candidate}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Partido:</span>{" "}
-                            <Badge variant="secondary">{municipality.topVote.party}</Badge>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Votos:</span>{" "}
-                            <span className="font-medium">
-                              {municipality.topVote.totalVotes.toLocaleString("pt-BR")}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Percentual:</span>{" "}
-                            <Badge
-                              style={{
-                                backgroundColor: getColorByPercentage(municipality.topVote.percentage),
-                                color: "white",
-                              }}
-                            >
-                              {municipality.topVote.percentage}%
-                            </Badge>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Total de eleitores:</span>{" "}
-                            <span className="font-medium">
-                              {municipality.totalVoters.toLocaleString("pt-BR")}
-                            </span>
-                          </div>
-                          <div className="pt-2 border-t border-border">
-                            <div className="text-xs text-muted-foreground mb-1">Votação {selectedTurno}º Turno</div>
-                            <div className="w-full bg-secondary rounded-full h-2">
-                              <div
-                                className="h-2 rounded-full"
-                                style={{
-                                  width: `${municipality.topVote.percentage}%`,
-                                  backgroundColor: getColorByPercentage(municipality.topVote.percentage),
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </Popup>
-                  </CircleMarker>
-                ))}
-              </MapContainer>
-            )}
+            {/* Map */}
+            <div className="lg:col-span-3">
+              <Card className="h-[700px]">
+                <CardContent className="p-0 h-full">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <Skeleton className="w-full h-full" />
+                    </div>
+                  ) : (
+                    <MapContainer
+                      center={[-14.235, -51.925]}
+                      zoom={4}
+                      style={{ height: "100%", width: "100%" }}
+                      className="rounded-lg"
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      {filteredVoters
+                        .filter(voter => voter.latitude && voter.longitude)
+                        .map((voter) => (
+                          <CircleMarker
+                            key={voter.id}
+                            center={[voter.latitude!, voter.longitude!]}
+                            radius={8}
+                            fillColor={getTagColor(voter.tags)}
+                            color="#fff"
+                            weight={2}
+                            opacity={1}
+                            fillOpacity={0.8}
+                          >
+                            <Popup>
+                              <div className="space-y-1">
+                                <p className="font-bold">{voter.full_name}</p>
+                                <p className="text-sm">
+                                  {voter.city}, {voter.state}
+                                </p>
+                                {voter.tags && voter.tags.length > 0 && (
+                                  <div className="flex gap-1 flex-wrap">
+                                    {voter.tags.map((tag, i) => (
+                                      <Badge 
+                                        key={i}
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
+                                        {tag}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </Popup>
+                          </CircleMarker>
+                        ))}
+                    </MapContainer>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </main>
     </div>
   );
-};
-
-export default Mapas;
+}
