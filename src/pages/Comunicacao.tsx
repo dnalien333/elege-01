@@ -114,8 +114,8 @@ const Comunicacao = () => {
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar />
-      <main className="flex-1 p-8">
-        <div className="w-full space-y-8">
+      <main className="flex-1 p-8 w-full">
+        <div className="max-w-[1600px] mx-auto w-full space-y-8">
           {/* Header */}
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">
