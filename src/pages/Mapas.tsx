@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +11,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MapPin, Users, Filter } from "lucide-react";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+
+// Dynamic imports for react-leaflet to avoid SSR issues
+const MapContainer = lazy(() => 
+  import("react-leaflet").then(module => ({ default: module.MapContainer }))
+);
+const TileLayer = lazy(() => 
+  import("react-leaflet").then(module => ({ default: module.TileLayer }))
+);
+const CircleMarker = lazy(() => 
+  import("react-leaflet").then(module => ({ default: module.CircleMarker }))
+);
+const Popup = lazy(() => 
+  import("react-leaflet").then(module => ({ default: module.Popup }))
+);
 
 // Types
 interface Voter {
@@ -317,54 +330,59 @@ export default function Mapas() {
                       <Skeleton className="w-full h-full" />
                     </div>
                   ) : (
-                    <MapContainer
-                      key="voter-map"
-                      center={[-14.235, -51.925]}
-                      zoom={4}
-                      style={{ height: "100%", width: "100%" }}
-                      className="rounded-lg"
-                    >
-                      <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      {filteredVoters
-                        .filter(voter => voter.latitude && voter.longitude)
-                        .map((voter) => (
-                          <CircleMarker
-                            key={voter.id}
-                            center={[voter.latitude!, voter.longitude!]}
-                            radius={8}
-                            fillColor={getTagColor(voter.tags)}
-                            color="#fff"
-                            weight={2}
-                            opacity={1}
-                            fillOpacity={0.8}
-                          >
-                            <Popup>
-                              <div className="space-y-1">
-                                <p className="font-bold">{voter.full_name}</p>
-                                <p className="text-sm">
-                                  {voter.city}, {voter.state}
-                                </p>
-                                {voter.tags && voter.tags.length > 0 && (
-                                  <div className="flex gap-1 flex-wrap">
-                                    {voter.tags.map((tag, i) => (
-                                      <Badge 
-                                        key={i}
-                                        variant="outline"
-                                        className="text-xs"
-                                      >
-                                        {tag}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </Popup>
-                          </CircleMarker>
-                        ))}
-                    </MapContainer>
+                    <Suspense fallback={
+                      <div className="flex items-center justify-center h-full">
+                        <Skeleton className="w-full h-full" />
+                      </div>
+                    }>
+                      <MapContainer
+                        center={[-14.235, -51.925]}
+                        zoom={4}
+                        style={{ height: "100%", width: "100%" }}
+                        className="rounded-lg"
+                      >
+                        <TileLayer
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        {filteredVoters
+                          .filter(voter => voter.latitude && voter.longitude)
+                          .map((voter) => (
+                            <CircleMarker
+                              key={voter.id}
+                              center={[voter.latitude!, voter.longitude!]}
+                              radius={8}
+                              fillColor={getTagColor(voter.tags)}
+                              color="#fff"
+                              weight={2}
+                              opacity={1}
+                              fillOpacity={0.8}
+                            >
+                              <Popup>
+                                <div className="space-y-1">
+                                  <p className="font-bold">{voter.full_name}</p>
+                                  <p className="text-sm">
+                                    {voter.city}, {voter.state}
+                                  </p>
+                                  {voter.tags && voter.tags.length > 0 && (
+                                    <div className="flex gap-1 flex-wrap">
+                                      {voter.tags.map((tag, i) => (
+                                        <Badge 
+                                          key={i}
+                                          variant="outline"
+                                          className="text-xs"
+                                        >
+                                          {tag}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </Popup>
+                            </CircleMarker>
+                          ))}
+                      </MapContainer>
+                    </Suspense>
                   )}
                 </CardContent>
               </Card>
