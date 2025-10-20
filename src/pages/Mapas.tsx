@@ -1,18 +1,31 @@
+"use client";
+
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Sidebar from "@/components/layout/Sidebar";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MapPin, Users, Filter } from "lucide-react";
+import { HeatLegend } from "@/components/map/HeatLegend";
+import { StatsSidebar } from "@/components/map/StatsSidebar";
+import { VotesByCandidateChart } from "@/components/charts/VotesByCandidateChart";
+import { VotesByPartyChart } from "@/components/charts/VotesByPartyChart";
+import { WinnersTable } from "@/components/tables/WinnersTable";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
+import L from "leaflet";
 
-// Dynamic imports for react-leaflet to avoid SSR issues
+// Fix Leaflet icon paths
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+// Lazy load react-leaflet components
 const MapContainer = lazy(() => 
   import("react-leaflet").then(module => ({ default: module.MapContainer }))
 );
@@ -26,89 +39,71 @@ const Popup = lazy(() =>
   import("react-leaflet").then(module => ({ default: module.Popup }))
 );
 
-// Types
-interface Voter {
+type ViewMode = "coalition" | "party" | "candidate" | "winners";
+
+interface TSEResult {
   id: string;
-  full_name: string;
-  latitude?: number;
-  longitude?: number;
-  city?: string;
-  state?: string;
-  tags?: string[];
-  campaign_id?: string;
+  year: number;
+  state: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+  candidate_name: string;
+  party: string;
+  votes: number;
+  coalition_side: string;
+  elected: boolean;
+  substitute: boolean;
 }
 
-// Tag color mapping
-const getTagColor = (tags: string[] | undefined): string => {
-  if (!tags || tags.length === 0) return "#9CA3AF"; // gray
-  
-  const tag = tags[0]?.toLowerCase();
-  switch (tag) {
-    case "apoiador":
-      return "#22C55E"; // green
-    case "indeciso":
-      return "#EAB308"; // yellow
-    case "voluntário":
-    case "voluntario":
-      return "#3B82F6"; // blue
-    case "opositor":
-      return "#EF4444"; // red
-    default:
-      return "#9CA3AF"; // gray
+interface FilterState {
+  year: number;
+  state: string;
+  coalitionSides: string[];
+  parties: string[];
+  candidateSearch: string;
+}
+
+const getColorByCoalition = (side: string) => {
+  switch (side) {
+    case 'left': return '#ef4444';
+    case 'right': return '#3b82f6';
+    case 'center': return '#9ca3af';
+    default: return '#6b7280';
   }
 };
 
-const getTagLabel = (color: string): string => {
-  switch (color) {
-    case "#22C55E":
-      return "Apoiador";
-    case "#EAB308":
-      return "Indeciso";
-    case "#3B82F6":
-      return "Voluntário";
-    case "#EF4444":
-      return "Opositor";
-    default:
-      return "Sem tag";
-  }
+const getColorByParty = (party: string) => {
+  const colors: Record<string, string> = {
+    'PT': '#e11d48',
+    'PSOL': '#f97316',
+    'PDT': '#eab308',
+    'PL': '#3b82f6',
+    'REPUBLICANOS': '#6366f1',
+    'UB': '#8b5cf6',
+    'PSDB': '#06b6d4',
+    'MDB': '#14b8a6',
+  };
+  return colors[party] || '#6b7280';
 };
 
-// Mock data generator
-const generateMockVoters = (): Voter[] => {
-  const states = ["SP", "RJ", "MG", "BA", "PR", "RS", "PE", "CE", "PA", "SC"];
-  const cities = [
-    "São Paulo", "Rio de Janeiro", "Belo Horizonte", "Salvador", "Curitiba",
-    "Porto Alegre", "Recife", "Fortaleza", "Belém", "Florianópolis"
-  ];
-  const tags = ["apoiador", "indeciso", "voluntário", "opositor"];
-  const names = [
-    "João Silva", "Maria Santos", "Pedro Oliveira", "Ana Costa", "Carlos Souza",
-    "Juliana Lima", "Roberto Alves", "Fernanda Rocha", "Lucas Martins", "Patricia Ferreira"
-  ];
-
-  const voters: Voter[] = [];
-  for (let i = 0; i < 50; i++) {
-    const stateIndex = Math.floor(Math.random() * states.length);
-    voters.push({
-      id: `mock-${i}`,
-      full_name: names[Math.floor(Math.random() * names.length)] + ` ${i}`,
-      latitude: -33 + Math.random() * 28, // Brazil latitude range
-      longitude: -73.5 + Math.random() * 35, // Brazil longitude range
-      city: cities[stateIndex],
-      state: states[stateIndex],
-      tags: [tags[Math.floor(Math.random() * tags.length)]],
-      campaign_id: "mock-campaign"
-    });
-  }
-  return voters;
+const getColorByElected = (elected: boolean, substitute: boolean) => {
+  if (elected) return '#22c55e';
+  if (substitute) return '#eab308';
+  return '#9ca3af';
 };
 
 export default function Mapas() {
   const navigate = useNavigate();
   const [isMounted, setIsMounted] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTag, setSelectedTag] = useState<string>("all");
-  const [selectedState, setSelectedState] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("coalition");
+  const [filters, setFilters] = useState<FilterState>({
+    year: 2022,
+    state: "all",
+    coalitionSides: [],
+    parties: [],
+    candidateSearch: ""
+  });
 
   // Check authentication
   useEffect(() => {
@@ -122,66 +117,126 @@ export default function Mapas() {
     setIsMounted(true);
   }, [navigate]);
 
-  // Fetch voters from Supabase
-  const { data: voters = [], isLoading, error } = useQuery({
-    queryKey: ["voters"],
+  // Fetch TSE results
+  const { data: results = [], isLoading, error, refetch } = useQuery({
+    queryKey: ["tse-results", filters],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("voters")
-        .select("id, full_name, city, state, tags, campaign_id");
-      
-      if (error) {
-        console.error("Error fetching voters:", error);
+      let query = supabase
+        .from("tse_results")
+        .select("*")
+        .eq("year", filters.year);
+
+      if (filters.state !== "all") {
+        query = query.eq("state", filters.state);
       }
 
-      // Always use mock data for demo (voters table doesn't have lat/long)
-      toast.info("Usando dados de demonstração");
-      return generateMockVoters();
+      if (filters.candidateSearch) {
+        query = query.ilike("candidate_name", `%${filters.candidateSearch}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Error fetching TSE results:", error);
+        toast.error("Erro ao carregar dados eleitorais");
+        return [];
+      }
+
+      return data as TSEResult[];
     },
   });
 
-  // Filter voters
-  const filteredVoters = useMemo(() => {
-    return voters.filter((voter) => {
-      const matchesSearch = 
-        searchQuery === "" ||
-        voter.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        voter.city?.toLowerCase().includes(searchQuery.toLowerCase());
+  // Get available states and parties
+  const availableStates = useMemo(() => 
+    Array.from(new Set(results.map(r => r.state))).sort(),
+    [results]
+  );
 
-      const matchesTag = 
-        selectedTag === "all" ||
-        voter.tags?.some(tag => tag.toLowerCase() === selectedTag.toLowerCase());
-
-      const matchesState = 
-        selectedState === "all" ||
-        voter.state === selectedState;
-
-      return matchesSearch && matchesTag && matchesState;
-    });
-  }, [voters, searchQuery, selectedTag, selectedState]);
+  const availableParties = useMemo(() => 
+    Array.from(new Set(results.map(r => r.party))).sort(),
+    [results]
+  );
 
   // Calculate statistics
   const stats = useMemo(() => {
-    const total = filteredVoters.length;
-    const byTag = filteredVoters.reduce((acc, voter) => {
-      const tag = voter.tags?.[0]?.toLowerCase() || "sem tag";
-      acc[tag] = (acc[tag] || 0) + 1;
+    const totalVotes = results.reduce((sum, r) => sum + r.votes, 0);
+    const leftVotes = results.filter(r => r.coalition_side === 'left').reduce((sum, r) => sum + r.votes, 0);
+    const rightVotes = results.filter(r => r.coalition_side === 'right').reduce((sum, r) => sum + r.votes, 0);
+    const centerVotes = results.filter(r => r.coalition_side === 'center').reduce((sum, r) => sum + r.votes, 0);
+    const totalCandidates = new Set(results.map(r => r.candidate_name)).size;
+    const elected = results.filter(r => r.elected).length;
+
+    return {
+      totalVotes,
+      leftVotes,
+      rightVotes,
+      centerVotes,
+      totalCandidates,
+      elected
+    };
+  }, [results]);
+
+  // Aggregate data for charts
+  const candidateVotes = useMemo(() => {
+    const aggregated = results.reduce((acc, result) => {
+      const key = result.candidate_name;
+      if (!acc[key]) {
+        acc[key] = {
+          candidate_name: result.candidate_name,
+          party: result.party,
+          coalition_side: result.coalition_side,
+          total_votes: 0
+        };
+      }
+      acc[key].total_votes += result.votes;
       return acc;
-    }, {} as Record<string, number>);
+    }, {} as Record<string, any>);
 
-    return { total, byTag };
-  }, [filteredVoters]);
+    return Object.values(aggregated).sort((a: any, b: any) => b.total_votes - a.total_votes);
+  }, [results]);
 
-  // Get unique states and tags
-  const uniqueStates = useMemo(() => 
-    Array.from(new Set(voters.map(v => v.state).filter(Boolean))).sort(),
-    [voters]
-  );
+  const partyVotes = useMemo(() => {
+    const aggregated = results.reduce((acc, result) => {
+      const key = result.party;
+      if (!acc[key]) {
+        acc[key] = {
+          party: result.party,
+          coalition_side: result.coalition_side,
+          total_votes: 0
+        };
+      }
+      acc[key].total_votes += result.votes;
+      return acc;
+    }, {} as Record<string, any>);
 
-  const uniqueTags = useMemo(() => 
-    Array.from(new Set(voters.flatMap(v => v.tags || []))).sort(),
-    [voters]
-  );
+    return Object.values(aggregated).sort((a: any, b: any) => b.total_votes - a.total_votes);
+  }, [results]);
+
+  const winnersData = useMemo(() => {
+    return candidateVotes
+      .filter((c: any) => c.elected || c.substitute)
+      .map((c: any) => ({
+        ...c,
+        elected: results.some(r => r.candidate_name === c.candidate_name && r.elected),
+        substitute: results.some(r => r.candidate_name === c.candidate_name && r.substitute),
+        state: results.find(r => r.candidate_name === c.candidate_name)?.state || ''
+      }));
+  }, [candidateVotes, results]);
+
+  const getMarkerColor = (result: TSEResult) => {
+    switch (viewMode) {
+      case "coalition":
+        return getColorByCoalition(result.coalition_side);
+      case "party":
+        return getColorByParty(result.party);
+      case "winners":
+        return getColorByElected(result.elected, result.substitute);
+      case "candidate":
+        return getColorByParty(result.party);
+      default:
+        return '#6b7280';
+    }
+  };
 
   if (!isMounted) {
     return null;
@@ -211,182 +266,124 @@ export default function Mapas() {
               Mapas de Calor Eleitoral
             </h1>
             <p className="text-muted-foreground">
-              Visualização georreferenciada dos eleitores por localização e tags
+              Visualização georreferenciada dos resultados das eleições TSE
             </p>
           </div>
 
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-5 w-5" />
-                Filtrar Eleitores
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Input
-                    placeholder="Buscar por nome ou cidade..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <Select value={selectedTag} onValueChange={setSelectedTag}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todas as tags" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas as tags</SelectItem>
-                      {uniqueTags.map(tag => (
-                        <SelectItem key={tag} value={tag}>{tag}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Select value={selectedState} onValueChange={setSelectedState}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos os estados" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os estados</SelectItem>
-                      {uniqueStates.map(state => (
-                        <SelectItem key={state} value={state}>{state}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Main Content: Map + Stats */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Stats Sidebar */}
-            <div className="lg:col-span-1 space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Users className="h-5 w-5" />
-                    Estatísticas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total de Eleitores</p>
-                    <p className="text-3xl font-bold">{stats.total}</p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Por Tag:</p>
-                    {Object.entries(stats.byTag).map(([tag, count]) => (
-                      <div key={tag} className="flex justify-between items-center">
-                        <Badge 
-                          style={{ 
-                            backgroundColor: getTagColor([tag]),
-                            color: "white"
-                          }}
-                        >
-                          {tag}
-                        </Badge>
-                        <span className="font-semibold">{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Color Legend */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <MapPin className="h-5 w-5" />
-                    Legenda
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {["#22C55E", "#EAB308", "#3B82F6", "#EF4444", "#9CA3AF"].map(color => (
-                    <div key={color} className="flex items-center gap-2">
-                      <div 
-                        className="w-4 h-4 rounded-full" 
-                        style={{ backgroundColor: color }}
-                      />
-                      <span className="text-sm">{getTagLabel(color)}</span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
+          {/* Main Content: Map + Sidebars */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Sidebar - Stats & Filters */}
+            <div className="lg:col-span-3">
+              <StatsSidebar
+                filters={filters}
+                onFilterChange={(newFilters) => setFilters({ ...filters, ...newFilters })}
+                stats={stats}
+                availableStates={availableStates}
+                availableParties={availableParties}
+                onReseedData={() => {
+                  refetch();
+                  toast.success("Dados recarregados com sucesso!");
+                }}
+              />
             </div>
 
             {/* Map */}
-            <div className="lg:col-span-3">
-              <Card className="h-[700px]">
-                <CardContent className="p-0 h-full">
-                  {isLoading ? (
+            <div className="lg:col-span-7">
+              <div className="h-[700px] rounded-lg overflow-hidden border bg-card">
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Skeleton className="w-full h-full" />
+                  </div>
+                ) : (
+                  <Suspense fallback={
                     <div className="flex items-center justify-center h-full">
                       <Skeleton className="w-full h-full" />
                     </div>
-                  ) : (
-                    <Suspense fallback={
-                      <div className="flex items-center justify-center h-full">
-                        <Skeleton className="w-full h-full" />
-                      </div>
-                    }>
-                      <MapContainer
-                        center={[-14.235, -51.925]}
-                        zoom={4}
-                        style={{ height: "100%", width: "100%" }}
-                        className="rounded-lg"
-                      >
-                        <TileLayer
-                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        />
-                        {filteredVoters
-                          .filter(voter => voter.latitude && voter.longitude)
-                          .map((voter) => (
-                            <CircleMarker
-                              key={voter.id}
-                              center={[voter.latitude!, voter.longitude!]}
-                              radius={8}
-                              fillColor={getTagColor(voter.tags)}
-                              color="#fff"
-                              weight={2}
-                              opacity={1}
-                              fillOpacity={0.8}
-                            >
-                              <Popup>
-                                <div className="space-y-1">
-                                  <p className="font-bold">{voter.full_name}</p>
-                                  <p className="text-sm">
-                                    {voter.city}, {voter.state}
-                                  </p>
-                                  {voter.tags && voter.tags.length > 0 && (
-                                    <div className="flex gap-1 flex-wrap">
-                                      {voter.tags.map((tag, i) => (
-                                        <Badge 
-                                          key={i}
-                                          variant="outline"
-                                          className="text-xs"
-                                        >
-                                          {tag}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              </Popup>
-                            </CircleMarker>
-                          ))}
-                      </MapContainer>
-                    </Suspense>
-                  )}
-                </CardContent>
-              </Card>
+                  }>
+                    <MapContainer
+                      center={[-14.235, -51.925]}
+                      zoom={4}
+                      style={{ height: "100%", width: "100%" }}
+                      className="z-0"
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      {results.map((result) => (
+                        <CircleMarker
+                          key={result.id}
+                          center={[result.latitude, result.longitude]}
+                          radius={6}
+                          fillColor={getMarkerColor(result)}
+                          color="#fff"
+                          weight={1}
+                          opacity={1}
+                          fillOpacity={0.7}
+                        >
+                          <Popup>
+                            <div className="space-y-1">
+                              <p className="font-bold">{result.candidate_name}</p>
+                              <p className="text-sm">{result.party} - {result.coalition_side}</p>
+                              <p className="text-sm">{result.city}, {result.state}</p>
+                              <p className="text-sm font-semibold">
+                                {result.votes.toLocaleString()} votos
+                              </p>
+                              {result.elected && <p className="text-xs text-green-600">✓ Eleito</p>}
+                              {result.substitute && <p className="text-xs text-yellow-600">✓ Suplente</p>}
+                            </div>
+                          </Popup>
+                        </CircleMarker>
+                      ))}
+                    </MapContainer>
+                  </Suspense>
+                )}
+              </div>
             </div>
+
+            {/* Right Sidebar - Legend */}
+            <div className="lg:col-span-2">
+              <HeatLegend viewMode={viewMode} onViewModeChange={setViewMode} />
+            </div>
+          </div>
+
+          {/* Analytical Sections */}
+          <div className="space-y-4">
+            <Collapsible defaultOpen>
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card rounded-lg border hover:bg-accent">
+                <h2 className="text-2xl font-bold">Votos por Candidato</h2>
+                <ChevronDown className="h-5 w-5" />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-4">
+                  <VotesByCandidateChart data={candidateVotes} />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+            <Collapsible defaultOpen>
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card rounded-lg border hover:bg-accent">
+                <h2 className="text-2xl font-bold">Votos por Partido</h2>
+                <ChevronDown className="h-5 w-5" />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-4">
+                  <VotesByPartyChart data={partyVotes} />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+            <Collapsible defaultOpen>
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card rounded-lg border hover:bg-accent">
+                <h2 className="text-2xl font-bold">Eleitos e Suplentes</h2>
+                <ChevronDown className="h-5 w-5" />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-4">
+                  <WinnersTable data={winnersData} />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         </div>
       </main>

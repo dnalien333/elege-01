@@ -691,6 +691,60 @@ export type Database = {
           },
         ]
       }
+      tse_results: {
+        Row: {
+          candidate_name: string
+          city: string
+          coalition_side: string | null
+          created_at: string | null
+          elected: boolean | null
+          id: string
+          latitude: number
+          longitude: number
+          party: string
+          section: string | null
+          state: string
+          substitute: boolean | null
+          votes: number
+          year: number
+          zone: string | null
+        }
+        Insert: {
+          candidate_name: string
+          city: string
+          coalition_side?: string | null
+          created_at?: string | null
+          elected?: boolean | null
+          id?: string
+          latitude: number
+          longitude: number
+          party: string
+          section?: string | null
+          state: string
+          substitute?: boolean | null
+          votes?: number
+          year: number
+          zone?: string | null
+        }
+        Update: {
+          candidate_name?: string
+          city?: string
+          coalition_side?: string | null
+          created_at?: string | null
+          elected?: boolean | null
+          id?: string
+          latitude?: number
+          longitude?: number
+          party?: string
+          section?: string | null
+          state?: string
+          substitute?: boolean | null
+          votes?: number
+          year?: number
+          zone?: string | null
+        }
+        Relationships: []
+      }
       voters: {
         Row: {
           assigned_to: string | null
