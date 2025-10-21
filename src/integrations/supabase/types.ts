@@ -588,7 +588,7 @@ export type Database = {
             foreignKeyName: "demands_assigned_to_fkey"
             columns: ["assigned_to"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "colaboradores"
             referencedColumns: ["id"]
           },
           {
