@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -35,6 +35,40 @@ export function NewDemandModal({ open, onOpenChange, campaignId }: NewDemandModa
     channel: "whatsapp" as const,
     priority: "medium" as const,
     urgency: "medium" as const,
+    voter_id: "",
+    assigned_to: "",
+  });
+
+  // Fetch voters
+  const { data: voters = [] } = useQuery({
+    queryKey: ["voters", campaignId],
+    queryFn: async () => {
+      if (!campaignId) return [];
+      const { data, error } = await supabase
+        .from("voters")
+        .select("id, full_name")
+        .eq("campaign_id", campaignId)
+        .order("full_name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!campaignId && open,
+  });
+
+  // Fetch colaboradores
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ["colaboradores", campaignId],
+    queryFn: async () => {
+      if (!campaignId) return [];
+      const { data, error } = await supabase
+        .from("colaboradores")
+        .select("id, full_name")
+        .eq("campaign_id", campaignId)
+        .order("full_name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!campaignId && open,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,6 +102,8 @@ export function NewDemandModal({ open, onOpenChange, campaignId }: NewDemandModa
         channel: "whatsapp",
         priority: "medium",
         urgency: "medium",
+        voter_id: "",
+        assigned_to: "",
       });
     } catch (error) {
       console.error("Error creating demand:", error);
@@ -85,6 +121,48 @@ export function NewDemandModal({ open, onOpenChange, campaignId }: NewDemandModa
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="voter">Eleitor *</Label>
+              <Select
+                value={formData.voter_id}
+                onValueChange={(value) => setFormData({ ...formData, voter_id: value })}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um eleitor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {voters.map((voter) => (
+                    <SelectItem key={voter.id} value={voter.id}>
+                      {voter.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="assigned">Responsável *</Label>
+              <Select
+                value={formData.assigned_to}
+                onValueChange={(value) => setFormData({ ...formData, assigned_to: value })}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um responsável" />
+                </SelectTrigger>
+                <SelectContent>
+                  {colaboradores.map((colab) => (
+                    <SelectItem key={colab.id} value={colab.id}>
+                      {colab.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="title">Título *</Label>
