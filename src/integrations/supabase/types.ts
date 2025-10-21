@@ -336,6 +336,284 @@ export type Database = {
           },
         ]
       }
+      demand_comments: {
+        Row: {
+          attachments: Json | null
+          comment: string
+          created_at: string | null
+          demand_id: string
+          id: string
+          is_internal: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          attachments?: Json | null
+          comment: string
+          created_at?: string | null
+          demand_id: string
+          id?: string
+          is_internal?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          attachments?: Json | null
+          comment?: string
+          created_at?: string | null
+          demand_id?: string
+          id?: string
+          is_internal?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demand_comments_demand_id_fkey"
+            columns: ["demand_id"]
+            isOneToOne: false
+            referencedRelation: "demands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demand_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      demand_history: {
+        Row: {
+          action: string
+          created_at: string | null
+          demand_id: string
+          field_changed: string | null
+          id: string
+          new_value: string | null
+          notes: string | null
+          old_value: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          demand_id: string
+          field_changed?: string | null
+          id?: string
+          new_value?: string | null
+          notes?: string | null
+          old_value?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          demand_id?: string
+          field_changed?: string | null
+          id?: string
+          new_value?: string | null
+          notes?: string | null
+          old_value?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demand_history_demand_id_fkey"
+            columns: ["demand_id"]
+            isOneToOne: false
+            referencedRelation: "demands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demand_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      demand_reminders: {
+        Row: {
+          created_at: string | null
+          demand_id: string
+          id: string
+          is_sent: boolean | null
+          remind_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          demand_id: string
+          id?: string
+          is_sent?: boolean | null
+          remind_at: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          demand_id?: string
+          id?: string
+          is_sent?: boolean | null
+          remind_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demand_reminders_demand_id_fkey"
+            columns: ["demand_id"]
+            isOneToOne: false
+            referencedRelation: "demands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demand_reminders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      demand_watchers: {
+        Row: {
+          created_at: string | null
+          demand_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          demand_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          demand_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demand_watchers_demand_id_fkey"
+            columns: ["demand_id"]
+            isOneToOne: false
+            referencedRelation: "demands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demand_watchers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      demands: {
+        Row: {
+          action_needed: string | null
+          assigned_to: string | null
+          attachments: Json | null
+          campaign_id: string | null
+          channel: Database["public"]["Enums"]["demand_channel"]
+          completed_at: string | null
+          contact_date: string | null
+          created_at: string | null
+          created_by: string | null
+          deadline: string | null
+          description: string | null
+          id: string
+          is_public: boolean | null
+          next_steps: string | null
+          priority: Database["public"]["Enums"]["demand_priority"]
+          status: Database["public"]["Enums"]["demand_status"]
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+          urgency: Database["public"]["Enums"]["demand_urgency"]
+          voter_id: string | null
+        }
+        Insert: {
+          action_needed?: string | null
+          assigned_to?: string | null
+          attachments?: Json | null
+          campaign_id?: string | null
+          channel: Database["public"]["Enums"]["demand_channel"]
+          completed_at?: string | null
+          contact_date?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          next_steps?: string | null
+          priority?: Database["public"]["Enums"]["demand_priority"]
+          status?: Database["public"]["Enums"]["demand_status"]
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+          urgency?: Database["public"]["Enums"]["demand_urgency"]
+          voter_id?: string | null
+        }
+        Update: {
+          action_needed?: string | null
+          assigned_to?: string | null
+          attachments?: Json | null
+          campaign_id?: string | null
+          channel?: Database["public"]["Enums"]["demand_channel"]
+          completed_at?: string | null
+          contact_date?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          next_steps?: string | null
+          priority?: Database["public"]["Enums"]["demand_priority"]
+          status?: Database["public"]["Enums"]["demand_status"]
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+          urgency?: Database["public"]["Enums"]["demand_urgency"]
+          voter_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demands_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demands_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demands_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demands_voter_id_fkey"
+            columns: ["voter_id"]
+            isOneToOne: false
+            referencedRelation: "voters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lgpd_consents: {
         Row: {
           consent_text: string
@@ -825,7 +1103,24 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      demand_channel:
+        | "whatsapp"
+        | "instagram"
+        | "facebook"
+        | "phone"
+        | "email"
+        | "in_person"
+        | "website"
+        | "gabinete"
+      demand_priority: "low" | "medium" | "high" | "critical"
+      demand_status:
+        | "unassigned"
+        | "pending"
+        | "in_progress"
+        | "awaiting_response"
+        | "completed"
+        | "archived"
+      demand_urgency: "low" | "medium" | "high" | "critical"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -952,6 +1247,27 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      demand_channel: [
+        "whatsapp",
+        "instagram",
+        "facebook",
+        "phone",
+        "email",
+        "in_person",
+        "website",
+        "gabinete",
+      ],
+      demand_priority: ["low", "medium", "high", "critical"],
+      demand_status: [
+        "unassigned",
+        "pending",
+        "in_progress",
+        "awaiting_response",
+        "completed",
+        "archived",
+      ],
+      demand_urgency: ["low", "medium", "high", "critical"],
+    },
   },
 } as const

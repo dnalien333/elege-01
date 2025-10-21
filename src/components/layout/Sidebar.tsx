@@ -7,7 +7,8 @@ import {
   Map,
   Flag,
   LogOut,
-  Vote
+  Vote,
+  ClipboardList
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +32,7 @@ const Sidebar = () => {
   const navItems = [
     { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/cadastros", icon: Users, label: "Cadastros" },
+    { to: "/demandas", icon: ClipboardList, label: "Demandas" },
     { to: "/mapas", icon: Map, label: "Mapas" },
     { to: "/comunicacao", icon: MessageSquare, label: "Comunicação" },
     { to: "/assistente", icon: Bot, label: "Assistente IA" },
