@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -14,37 +12,36 @@ import { WinnersTable } from "@/components/tables/WinnersTable";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
 
-// Fix Leaflet icon paths
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+// Lazy load react-leaflet components and Leaflet
+const MapContainer = lazy(() => 
+  import("react-leaflet").then(mod => ({ default: mod.MapContainer }))
+);
 
-// Lazy load react-leaflet components
-const MapContainer = lazy(async () => {
-  const { MapContainer } = await import("react-leaflet");
-  return { default: MapContainer };
-});
+const TileLayer = lazy(() => 
+  import("react-leaflet").then(mod => ({ default: mod.TileLayer }))
+);
 
-const TileLayer = lazy(async () => {
-  const { TileLayer } = await import("react-leaflet");
-  return { default: TileLayer };
-});
+const CircleMarker = lazy(() => 
+  import("react-leaflet").then(mod => ({ default: mod.CircleMarker }))
+);
 
-const CircleMarker = lazy(async () => {
-  const { CircleMarker } = await import("react-leaflet");
-  return { default: CircleMarker };
-});
+const Popup = lazy(() => 
+  import("react-leaflet").then(mod => ({ default: mod.Popup }))
+);
 
-const Popup = lazy(async () => {
-  const { Popup } = await import("react-leaflet");
-  return { default: Popup };
-});
+// Dynamically import and configure Leaflet
+const initLeaflet = async () => {
+  const L = await import("leaflet");
+  await import("leaflet/dist/leaflet.css");
+  
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  });
+};
 
 type ViewMode = "coalition" | "party" | "candidate" | "winners";
 
@@ -122,6 +119,7 @@ const getColorByElected = (elected: boolean, substitute: boolean) => {
 export default function Mapas() {
   const navigate = useNavigate();
   const [isMounted, setIsMounted] = useState(false);
+  const [leafletReady, setLeafletReady] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("coalition");
   const [filters, setFilters] = useState<FilterState>({
     year: 2022,
@@ -131,7 +129,7 @@ export default function Mapas() {
     candidateSearch: ""
   });
 
-  // Check authentication
+  // Check authentication and initialize Leaflet
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -139,8 +137,15 @@ export default function Mapas() {
         navigate("/auth");
       }
     };
-    checkAuth();
-    setIsMounted(true);
+    
+    const init = async () => {
+      await checkAuth();
+      await initLeaflet();
+      setLeafletReady(true);
+      setIsMounted(true);
+    };
+    
+    init();
   }, [navigate]);
 
   // Fetch TSE results
@@ -277,8 +282,17 @@ export default function Mapas() {
     }
   };
 
-  if (!isMounted) {
-    return null;
+  if (!isMounted || !leafletReady) {
+    return (
+      <div className="flex min-h-screen w-full">
+        <Sidebar />
+        <main className="flex-1 p-8 w-full">
+          <div className="flex items-center justify-center h-full">
+            <Skeleton className="w-full h-[700px]" />
+          </div>
+        </main>
+      </div>
+    );
   }
 
   if (error) {
