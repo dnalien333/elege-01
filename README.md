@@ -59,7 +59,16 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
-
+  
+## Future implementation & scaling considerations
++
+This prototype provides a strong starting point for future development. When moving from demo to production, consider the following improvements:
++
+- **Strengthen type safety**: Replace `any` usage in authentication and data-loading flows with precise TypeScript types to surface issues earlier in development.
+- **Enhance data-fetch UX**: Introduce loading, empty, and error states for sequential Supabase queries so users receive immediate feedback while data is fetched.
+- **Replace mock data with live integrations**: Wire dashboard task and activity lists to real data sources to provide meaningful insights once the backend endpoints are available.
+- **Add automated testing**: Establish at least unit and integration test coverage (e.g., Vitest + Testing Library) to protect critical onboarding and dashboard logic as the codebase grows.
++
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/3062ca8a-f5a4-4ac4-8d3c-8d53cd7d30e7) and click on Share -> Publish.
