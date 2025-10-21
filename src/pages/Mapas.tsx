@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,19 +25,12 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Lazy load react-leaflet components
-const MapContainer = lazy(() => 
-  import("react-leaflet").then(module => ({ default: module.MapContainer }))
-);
-const TileLayer = lazy(() => 
-  import("react-leaflet").then(module => ({ default: module.TileLayer }))
-);
-const CircleMarker = lazy(() => 
-  import("react-leaflet").then(module => ({ default: module.CircleMarker }))
-);
-const Popup = lazy(() => 
-  import("react-leaflet").then(module => ({ default: module.Popup }))
-);
+interface LeafletComponents {
+  MapContainer: typeof import("react-leaflet").MapContainer;
+  TileLayer: typeof import("react-leaflet").TileLayer;
+  CircleMarker: typeof import("react-leaflet").CircleMarker;
+  Popup: typeof import("react-leaflet").Popup;
+}
 
 type ViewMode = "coalition" | "party" | "candidate" | "winners";
 
@@ -62,6 +55,25 @@ interface FilterState {
   coalitionSides: string[];
   parties: string[];
   candidateSearch: string;
+}
+
+interface CandidateAggregate {
+  candidate_name: string;
+  party: string;
+  coalition_side: string;
+  total_votes: number;
+}
+
+interface PartyAggregate {
+  party: string;
+  coalition_side: string;
+  total_votes: number;
+}
+
+interface WinnerAggregate extends CandidateAggregate {
+  elected: boolean;
+  substitute: boolean;
+  state: string;
 }
 
 const getColorByCoalition = (side: string) => {
@@ -96,13 +108,14 @@ const getColorByElected = (elected: boolean, substitute: boolean) => {
 export default function Mapas() {
   const navigate = useNavigate();
   const [isMounted, setIsMounted] = useState(false);
+  const [leafletComponents, setLeafletComponents] = useState<LeafletComponents | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("coalition");
   const [filters, setFilters] = useState<FilterState>({
     year: 2022,
     state: "all",
     coalitionSides: [],
     parties: [],
-    candidateSearch: ""
+    candidateSearch: "",
   });
 
   // Check authentication
@@ -116,6 +129,35 @@ export default function Mapas() {
     checkAuth();
     setIsMounted(true);
   }, [navigate]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadLeaflet = async () => {
+      try {
+        const module = await import("react-leaflet");
+        if (isActive) {
+          setLeafletComponents({
+            MapContainer: module.MapContainer,
+            TileLayer: module.TileLayer,
+            CircleMarker: module.CircleMarker,
+            Popup: module.Popup,
+          });
+        }
+      } catch (err) {
+        console.error("Erro ao carregar componentes do mapa:", err);
+        toast.error("Não foi possível carregar o mapa");
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      loadLeaflet();
+    }
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   // Fetch TSE results
   const { data: results = [], isLoading, error, refetch } = useQuery({
@@ -147,12 +189,12 @@ export default function Mapas() {
   });
 
   // Get available states and parties
-  const availableStates = useMemo(() => 
+  const availableStates = useMemo(() =>
     Array.from(new Set(results.map(r => r.state))).sort(),
     [results]
   );
 
-  const availableParties = useMemo(() => 
+  const availableParties = useMemo(() =>
     Array.from(new Set(results.map(r => r.party))).sort(),
     [results]
   );
@@ -178,50 +220,64 @@ export default function Mapas() {
 
   // Aggregate data for charts
   const candidateVotes = useMemo(() => {
-    const aggregated = results.reduce((acc, result) => {
+    const aggregated = results.reduce<Record<string, CandidateAggregate>>((acc, result) => {
       const key = result.candidate_name;
       if (!acc[key]) {
         acc[key] = {
           candidate_name: result.candidate_name,
           party: result.party,
           coalition_side: result.coalition_side,
-          total_votes: 0
+          total_votes: 0,
         };
       }
       acc[key].total_votes += result.votes;
       return acc;
-    }, {} as Record<string, any>);
+    }, {});
 
-    return Object.values(aggregated).sort((a: any, b: any) => b.total_votes - a.total_votes);
+    return Object.values(aggregated).sort((a, b) => b.total_votes - a.total_votes);
   }, [results]);
 
   const partyVotes = useMemo(() => {
-    const aggregated = results.reduce((acc, result) => {
+    const aggregated = results.reduce<Record<string, PartyAggregate>>((acc, result) => {
       const key = result.party;
       if (!acc[key]) {
         acc[key] = {
           party: result.party,
           coalition_side: result.coalition_side,
-          total_votes: 0
+          total_votes: 0,
         };
       }
       acc[key].total_votes += result.votes;
       return acc;
-    }, {} as Record<string, any>);
+    }, {});
 
-    return Object.values(aggregated).sort((a: any, b: any) => b.total_votes - a.total_votes);
+    return Object.values(aggregated).sort((a, b) => b.total_votes - a.total_votes);
   }, [results]);
 
   const winnersData = useMemo(() => {
-    return candidateVotes
-      .filter((c: any) => c.elected || c.substitute)
-      .map((c: any) => ({
-        ...c,
-        elected: results.some(r => r.candidate_name === c.candidate_name && r.elected),
-        substitute: results.some(r => r.candidate_name === c.candidate_name && r.substitute),
-        state: results.find(r => r.candidate_name === c.candidate_name)?.state || ''
-      }));
-  }, [candidateVotes, results]);
+    const aggregated = results
+      .filter((result) => result.elected || result.substitute)
+      .reduce<Record<string, WinnerAggregate>>((acc, result) => {
+        const key = result.candidate_name;
+        if (!acc[key]) {
+          acc[key] = {
+            candidate_name: result.candidate_name,
+            party: result.party,
+            coalition_side: result.coalition_side,
+            total_votes: 0,
+            elected: false,
+            substitute: false,
+            state: result.state,
+          };
+        }
+        acc[key].total_votes += result.votes;
+        acc[key].elected = acc[key].elected || result.elected;
+        acc[key].substitute = acc[key].substitute || result.substitute;
+        return acc;
+      }, {});
+
+    return Object.values(aggregated).sort((a, b) => b.total_votes - a.total_votes);
+  }, [results]);
 
   const getMarkerColor = (result: TSEResult) => {
     switch (viewMode) {
@@ -290,53 +346,47 @@ export default function Mapas() {
             {/* Map */}
             <div className="lg:col-span-7">
               <div className="h-[700px] rounded-lg overflow-hidden border bg-card">
-                {isLoading ? (
+                {isLoading || !leafletComponents ? (
                   <div className="flex items-center justify-center h-full">
                     <Skeleton className="w-full h-full" />
                   </div>
                 ) : (
-                  <Suspense fallback={
-                    <div className="flex items-center justify-center h-full">
-                      <Skeleton className="w-full h-full" />
-                    </div>
-                  }>
-                    <MapContainer
-                      center={[-14.235, -51.925]}
-                      zoom={4}
-                      style={{ height: "100%", width: "100%" }}
-                      className="z-0"
-                    >
-                      <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      {results.map((result) => (
-                        <CircleMarker
-                          key={result.id}
-                          center={[result.latitude, result.longitude]}
-                          radius={6}
-                          fillColor={getMarkerColor(result)}
-                          color="#fff"
-                          weight={1}
-                          opacity={1}
-                          fillOpacity={0.7}
-                        >
-                          <Popup>
-                            <div className="space-y-1">
-                              <p className="font-bold">{result.candidate_name}</p>
-                              <p className="text-sm">{result.party} - {result.coalition_side}</p>
-                              <p className="text-sm">{result.city}, {result.state}</p>
-                              <p className="text-sm font-semibold">
-                                {result.votes.toLocaleString()} votos
-                              </p>
-                              {result.elected && <p className="text-xs text-green-600">✓ Eleito</p>}
-                              {result.substitute && <p className="text-xs text-yellow-600">✓ Suplente</p>}
-                            </div>
-                          </Popup>
-                        </CircleMarker>
-                      ))}
-                    </MapContainer>
-                  </Suspense>
+                  <leafletComponents.MapContainer
+                    center={[-14.235, -51.925]}
+                    zoom={4}
+                    style={{ height: "100%", width: "100%" }}
+                    className="z-0"
+                  >
+                    <leafletComponents.TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    {results.map((result) => (
+                      <leafletComponents.CircleMarker
+                        key={result.id}
+                        center={[result.latitude, result.longitude]}
+                        radius={6}
+                        fillColor={getMarkerColor(result)}
+                        color="#fff"
+                        weight={1}
+                        opacity={1}
+                        fillOpacity={0.7}
+                      >
+                        <leafletComponents.Popup>
+                          <div className="space-y-1">
+                            <p className="font-bold">{result.candidate_name}</p>
+                            <p className="text-sm">{result.party} - {result.coalition_side}</p>
+                            <p className="text-sm">{result.city}, {result.state}</p>
+                            <p className="text-sm font-semibold">
+                              {result.votes.toLocaleString()} votos
+                            </p>
+                            {result.elected && <p className="text-xs text-green-600">✓ Eleito</p>}
+                            {result.substitute && <p className="text-xs text-yellow-600">✓ Suplente</p>}
+                          </div>
+                        </leafletComponents.Popup>
+                      </leafletComponents.CircleMarker>
+                    ))}
+                  </leafletComponents.MapContainer>
                 )}
               </div>
             </div>
