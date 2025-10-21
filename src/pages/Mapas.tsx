@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,18 +26,6 @@ L.Icon.Default.mergeOptions({
 });
 
 // Lazy load react-leaflet components
-const MapContainer = lazy(() => 
-  import("react-leaflet").then(module => ({ default: module.MapContainer }))
-);
-const TileLayer = lazy(() => 
-  import("react-leaflet").then(module => ({ default: module.TileLayer }))
-);
-const CircleMarker = lazy(() => 
-  import("react-leaflet").then(module => ({ default: module.CircleMarker }))
-);
-const Popup = lazy(() => 
-  import("react-leaflet").then(module => ({ default: module.Popup }))
-);
 const MapContainer = lazy(async () => {
   const { MapContainer } = await import("react-leaflet");
   return { default: MapContainer };
@@ -128,7 +115,8 @@ const getColorByParty = (party: string) => {
 
 const getColorByElected = (elected: boolean, substitute: boolean) => {
   if (elected) return '#22c55e';
-@@ -94,51 +119,50 @@ const getColorByElected = (elected: boolean, substitute: boolean) => {
+  if (substitute) return '#f59e0b';
+  return '#6b7280';
 };
 
 export default function Mapas() {
@@ -180,8 +168,17 @@ export default function Mapas() {
         return [];
       }
 
-@@ -156,94 +180,108 @@ export default function Mapas() {
-    Array.from(new Set(results.map(r => r.party))).sort(),
+      return data as TSEResult[];
+    },
+  });
+
+  const availableStates = useMemo(
+    () => Array.from(new Set(results.map(r => r.state))).sort(),
+    [results]
+  );
+
+  const availableParties = useMemo(
+    () => Array.from(new Set(results.map(r => r.party))).sort(),
     [results]
   );
 
@@ -206,7 +203,6 @@ export default function Mapas() {
 
   // Aggregate data for charts
   const candidateVotes = useMemo(() => {
-    const aggregated = results.reduce((acc, result) => {
     const aggregated = results.reduce<Record<string, CandidateAggregate>>((acc, result) => {
       const key = result.candidate_name;
       if (!acc[key]) {
@@ -214,50 +210,34 @@ export default function Mapas() {
           candidate_name: result.candidate_name,
           party: result.party,
           coalition_side: result.coalition_side,
-          total_votes: 0
           total_votes: 0,
         };
       }
       acc[key].total_votes += result.votes;
       return acc;
-    }, {} as Record<string, any>);
     }, {});
 
-    return Object.values(aggregated).sort((a: any, b: any) => b.total_votes - a.total_votes);
     return Object.values(aggregated).sort((a, b) => b.total_votes - a.total_votes);
   }, [results]);
 
   const partyVotes = useMemo(() => {
-    const aggregated = results.reduce((acc, result) => {
     const aggregated = results.reduce<Record<string, PartyAggregate>>((acc, result) => {
       const key = result.party;
       if (!acc[key]) {
         acc[key] = {
           party: result.party,
           coalition_side: result.coalition_side,
-          total_votes: 0
           total_votes: 0,
         };
       }
       acc[key].total_votes += result.votes;
       return acc;
-    }, {} as Record<string, any>);
     }, {});
 
-    return Object.values(aggregated).sort((a: any, b: any) => b.total_votes - a.total_votes);
     return Object.values(aggregated).sort((a, b) => b.total_votes - a.total_votes);
   }, [results]);
 
   const winnersData = useMemo(() => {
-    return candidateVotes
-      .filter((c: any) => c.elected || c.substitute)
-      .map((c: any) => ({
-        ...c,
-        elected: results.some(r => r.candidate_name === c.candidate_name && r.elected),
-        substitute: results.some(r => r.candidate_name === c.candidate_name && r.substitute),
-        state: results.find(r => r.candidate_name === c.candidate_name)?.state || ''
-      }));
-  }, [candidateVotes, results]);
     const aggregated = results
       .filter((result) => result.elected || result.substitute)
       .reduce<Record<string, WinnerAggregate>>((acc, result) => {
@@ -306,7 +286,141 @@ export default function Mapas() {
       <div className="flex min-h-screen w-full">
         <Sidebar />
         <main className="flex-1 p-8 w-full">
-@@ -273,55 +311,57 @@ export default function Mapas() {
+          <div className="space-y-8">
+            <div>
+              <h1 className="text-4xl font-bold mb-2">Mapas de Calor Eleitoral</h1>
+              <p className="text-muted-foreground">
+                Visualização geográfica dos resultados eleitorais do TSE
+              </p>
+            </div>
+
+            {/* Main Content: Map + Sidebars */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left Sidebar - Stats & Filters */}
+              <div className="lg:col-span-3">
+                <StatsSidebar
+                  filters={filters}
+                  onFilterChange={(newFilters) => setFilters({ ...filters, ...newFilters })}
+                  stats={stats}
+                  availableStates={availableStates}
+                  availableParties={availableParties}
+                  onReseedData={() => {
+                    refetch();
+                    toast.success("Dados recarregados com sucesso!");
+                  }}
+                />
+              </div>
+
+              {/* Map */}
+              <div className="lg:col-span-7">
+                <div className="h-[700px] rounded-lg overflow-hidden border bg-card">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <Skeleton className="w-full h-full" />
+                    </div>
+                  ) : (
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center justify-center h-full">
+                          <Skeleton className="w-full h-full" />
+                        </div>
+                      }
+                    >
+                      <MapContainer
+                        center={[-14.235, -51.925]}
+                        zoom={4}
+                        style={{ height: "100%", width: "100%" }}
+                        className="z-0"
+                      >
+                        <TileLayer
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        {results.map((result) => (
+                          <CircleMarker
+                            key={result.id}
+                            center={[result.latitude, result.longitude]}
+                            radius={6}
+                            fillColor={getMarkerColor(result)}
+                            color="#fff"
+                            weight={1}
+                            opacity={1}
+                            fillOpacity={0.7}
+                          >
+                            <Popup>
+                              <div className="space-y-1">
+                                <p className="font-bold">{result.candidate_name}</p>
+                                <p className="text-sm">{result.party} - {result.coalition_side}</p>
+                                <p className="text-sm">Votos: {result.votes.toLocaleString()}</p>
+                                <p className="text-sm">
+                                  {result.city}, {result.state}
+                                </p>
+                              </div>
+                            </Popup>
+                          </CircleMarker>
+                        ))}
+                      </MapContainer>
+                    </Suspense>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Sidebar - Legend & Controls */}
+              <div className="lg:col-span-2">
+                <HeatLegend viewMode={viewMode} onViewModeChange={setViewMode} />
+              </div>
+            </div>
+
+            {/* Analytics Sections */}
+            <div className="space-y-6">
+              <Collapsible defaultOpen>
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card rounded-lg hover:bg-accent">
+                  <h2 className="text-2xl font-bold">Votos por Candidato</h2>
+                  <ChevronDown className="h-5 w-5" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-4">
+                  <VotesByCandidateChart data={candidateVotes} />
+                </CollapsibleContent>
+              </Collapsible>
+
+              <Collapsible defaultOpen>
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card rounded-lg hover:bg-accent">
+                  <h2 className="text-2xl font-bold">Votos por Partido</h2>
+                  <ChevronDown className="h-5 w-5" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-4">
+                  <VotesByPartyChart data={partyVotes} />
+                </CollapsibleContent>
+              </Collapsible>
+
+              <Collapsible defaultOpen>
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card rounded-lg hover:bg-accent">
+                  <h2 className="text-2xl font-bold">Eleitos e Suplentes</h2>
+                  <ChevronDown className="h-5 w-5" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-4">
+                  <WinnersTable data={winnersData} />
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen w-full">
+      <Sidebar />
+      <main className="flex-1 p-8 w-full">
+        <div className="space-y-8">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">Mapas de Calor Eleitoral</h1>
+            <p className="text-muted-foreground">
+              Visualização geográfica dos resultados eleitorais do TSE
+            </p>
+          </div>
+
           {/* Main Content: Map + Sidebars */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left Sidebar - Stats & Filters */}
@@ -332,11 +446,6 @@ export default function Mapas() {
                     <Skeleton className="w-full h-full" />
                   </div>
                 ) : (
-                  <Suspense fallback={
-                    <div className="flex items-center justify-center h-full">
-                      <Skeleton className="w-full h-full" />
-                    </div>
-                  }>
                   <Suspense
                     fallback={
                       <div className="flex items-center justify-center h-full">
@@ -369,3 +478,60 @@ export default function Mapas() {
                             <div className="space-y-1">
                               <p className="font-bold">{result.candidate_name}</p>
                               <p className="text-sm">{result.party} - {result.coalition_side}</p>
+                              <p className="text-sm">Votos: {result.votes.toLocaleString()}</p>
+                              <p className="text-sm">
+                                {result.city}, {result.state}
+                              </p>
+                            </div>
+                          </Popup>
+                        </CircleMarker>
+                      ))}
+                    </MapContainer>
+                  </Suspense>
+                )}
+              </div>
+            </div>
+
+            {/* Right Sidebar - Legend & Controls */}
+            <div className="lg:col-span-2">
+              <HeatLegend viewMode={viewMode} onViewModeChange={setViewMode} />
+            </div>
+          </div>
+
+          {/* Analytics Sections */}
+          <div className="space-y-6">
+            <Collapsible defaultOpen>
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card rounded-lg hover:bg-accent">
+                <h2 className="text-2xl font-bold">Votos por Candidato</h2>
+                <ChevronDown className="h-5 w-5" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4">
+                <VotesByCandidateChart data={candidateVotes} />
+              </CollapsibleContent>
+            </Collapsible>
+
+            <Collapsible defaultOpen>
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card rounded-lg hover:bg-accent">
+                <h2 className="text-2xl font-bold">Votos por Partido</h2>
+                <ChevronDown className="h-5 w-5" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4">
+                <VotesByPartyChart data={partyVotes} />
+              </CollapsibleContent>
+            </Collapsible>
+
+            <Collapsible defaultOpen>
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card rounded-lg hover:bg-accent">
+                <h2 className="text-2xl font-bold">Eleitos e Suplentes</h2>
+                <ChevronDown className="h-5 w-5" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4">
+                <WinnersTable data={winnersData} />
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
