@@ -55,7 +55,7 @@ const Comunicacao = () => {
 
   useEffect(() => {
     setIsMounted(true);
-    
+
     // Check authentication
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
@@ -71,7 +71,7 @@ const Comunicacao = () => {
   }, [messageTemplate, selectedSegment]);
 
   const generatePreview = () => {
-    const segmentVoters = mockVoters.filter(v => 
+    const segmentVoters = mockVoters.filter(v =>
       v.segment.toLowerCase() === selectedSegment?.name.toLowerCase()
     ).slice(0, 3);
 
@@ -101,7 +101,7 @@ const Comunicacao = () => {
     }
 
     setIsSending(true);
-    
+
     // Simulate sending delay
     setTimeout(() => {
       setIsSending(false);
@@ -112,10 +112,10 @@ const Comunicacao = () => {
   };
 
   return (
-    <div className="flex min-h-screen w-full">
+    <div className="flex min-h-screen w-full bg-background">
       <Sidebar />
-      <main className="flex-1 p-6 w-full">
-        <div className="w-full space-y-8">
+      <main className="flex-1 w-full p-6 lg:p-8 overflow-y-auto">
+        <div className="flex flex-col gap-8 w-full">
           {/* Header */}
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">
@@ -127,9 +127,9 @@ const Comunicacao = () => {
           </div>
 
           {/* Two Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full">
             {/* Left Section - Message Composer */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="xl:col-span-8 space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -215,12 +215,12 @@ const Comunicacao = () => {
                     maxLength={500}
                     disabled={isSending}
                   />
-                  
+
                   <div className="flex justify-between items-center text-sm text-muted-foreground">
                     <span>{messageTemplate.length}/500 caracteres</span>
                   </div>
 
-                  <div className="flex gap-3 pt-4">
+                    <div className="flex gap-3 pt-4">
                     <Button
                       onClick={handleSendMessage}
                       disabled={!selectedSegment || !messageTemplate.trim() || isSending}
@@ -248,7 +248,7 @@ const Comunicacao = () => {
             </div>
 
             {/* Right Section - WhatsApp Preview & Stats */}
-            <div className="lg:col-span-1 space-y-6">
+            <div className="xl:col-span-4 space-y-6">
               {/* Stats Card */}
               <Card className="bg-gradient-to-br from-[#25D366]/10 to-[#128C7E]/10 border-[#25D366]/20">
                 <CardHeader>
