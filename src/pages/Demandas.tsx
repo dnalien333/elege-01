@@ -42,7 +42,8 @@ import {
   AlertCircle,
   Clock,
   CheckCircle2,
-  ClipboardList
+  ClipboardList,
+  Download
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -58,6 +59,7 @@ import { NewDemandModal } from "@/components/demandas/NewDemandModal";
 import { DemandDetailsModal } from "@/components/demandas/DemandDetailsModal";
 import { AssignDemandModal } from "@/components/demandas/AssignDemandModal";
 import { KanbanView } from "@/components/demandas/KanbanView";
+import { exportToCSV } from "@/lib/csvUtils";
 
 type Demand = {
   id: string;
@@ -261,6 +263,28 @@ export default function Demandas() {
     setChannelFilter("all");
   };
 
+  const handleExport = () => {
+    const headers = ["ID", "Eleitor", "Título", "Descrição", "Canal", "Status", "Prioridade", "Urgência", "Responsável", "Prazo", "Criado em", "Tags"];
+    
+    const exportData = filteredDemands.map(demand => ({
+      ID: demand.id.slice(0, 8),
+      Eleitor: demand.voters?.full_name || "Sem eleitor",
+      Título: demand.title,
+      Descrição: demand.description || "",
+      Canal: demand.channel,
+      Status: demand.status,
+      Prioridade: demand.priority,
+      Urgência: demand.urgency,
+      Responsável: demand.profiles?.full_name || "Não atribuído",
+      Prazo: demand.deadline ? format(new Date(demand.deadline), "dd/MM/yyyy", { locale: ptBR }) : "",
+      "Criado em": format(new Date(demand.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+      Tags: demand.tags.join("; ")
+    }));
+
+    exportToCSV(exportData, `demandas_${format(new Date(), "yyyy-MM-dd")}.csv`, headers);
+    toast.success("Demandas exportadas com sucesso!");
+  };
+
   if (!isMounted) {
     return null;
   }
@@ -297,6 +321,10 @@ export default function Demandas() {
                   <LayoutGrid className="h-4 w-4" />
                 </Button>
               </div>
+              <Button variant="outline" onClick={handleExport}>
+                <Download className="h-4 w-4 mr-2" />
+                Exportar
+              </Button>
               <Button onClick={() => setShowNewDemandModal(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Demanda
