@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,38 +10,12 @@ import { VotesByCandidateChart } from "@/components/charts/VotesByCandidateChart
 import { VotesByPartyChart } from "@/components/charts/VotesByPartyChart";
 import { WinnersTable } from "@/components/tables/WinnersTable";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { lazy, Suspense } from "react";
 
-// Lazy load react-leaflet components and Leaflet
-const MapContainer = lazy(() => 
-  import("react-leaflet").then(mod => ({ default: mod.MapContainer }))
-);
-
-const TileLayer = lazy(() => 
-  import("react-leaflet").then(mod => ({ default: mod.TileLayer }))
-);
-
-const CircleMarker = lazy(() => 
-  import("react-leaflet").then(mod => ({ default: mod.CircleMarker }))
-);
-
-const Popup = lazy(() => 
-  import("react-leaflet").then(mod => ({ default: mod.Popup }))
-);
-
-// Dynamically import and configure Leaflet
-const initLeaflet = async () => {
-  const L = await import("leaflet");
-  await import("leaflet/dist/leaflet.css");
-  
-  delete (L.Icon.Default.prototype as any)._getIconUrl;
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  });
-};
+// Lazy load map component
+const MapView = lazy(() => import("@/components/map/MapView"));
 
 type ViewMode = "coalition" | "party" | "candidate" | "winners";
 
@@ -87,39 +61,9 @@ interface WinnerAggregate extends CandidateAggregate {
   state: string;
 }
 
-const getColorByCoalition = (side: string) => {
-  switch (side) {
-    case 'left': return '#ef4444';
-    case 'right': return '#3b82f6';
-    case 'center': return '#9ca3af';
-    default: return '#6b7280';
-  }
-};
-
-const getColorByParty = (party: string) => {
-  const colors: Record<string, string> = {
-    'PT': '#e11d48',
-    'PSOL': '#f97316',
-    'PDT': '#eab308',
-    'PL': '#3b82f6',
-    'REPUBLICANOS': '#6366f1',
-    'UB': '#8b5cf6',
-    'PSDB': '#06b6d4',
-    'MDB': '#14b8a6',
-  };
-  return colors[party] || '#6b7280';
-};
-
-const getColorByElected = (elected: boolean, substitute: boolean) => {
-  if (elected) return '#22c55e';
-  if (substitute) return '#f59e0b';
-  return '#6b7280';
-};
-
 export default function Mapas() {
   const navigate = useNavigate();
   const [isMounted, setIsMounted] = useState(false);
-  const [leafletReady, setLeafletReady] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("coalition");
   const [filters, setFilters] = useState<FilterState>({
     year: 2022,
@@ -129,23 +73,18 @@ export default function Mapas() {
     candidateSearch: ""
   });
 
-  // Check authentication and initialize Leaflet
+  // Check authentication
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         navigate("/auth");
+        return;
       }
-    };
-    
-    const init = async () => {
-      await checkAuth();
-      await initLeaflet();
-      setLeafletReady(true);
       setIsMounted(true);
     };
     
-    init();
+    checkAuth();
   }, [navigate]);
 
   // Fetch TSE results
@@ -170,11 +109,12 @@ export default function Mapas() {
       if (error) {
         console.error("Error fetching TSE results:", error);
         toast.error("Erro ao carregar dados eleitorais");
-        return [];
+        throw error;
       }
 
-      return data as TSEResult[];
+      return (data as TSEResult[]) || [];
     },
+    enabled: isMounted,
   });
 
   const availableStates = useMemo(
@@ -267,156 +207,13 @@ export default function Mapas() {
     return Object.values(aggregated).sort((a, b) => b.total_votes - a.total_votes);
   }, [results]);
 
-  const getMarkerColor = (result: TSEResult) => {
-    switch (viewMode) {
-      case "coalition":
-        return getColorByCoalition(result.coalition_side);
-      case "party":
-        return getColorByParty(result.party);
-      case "winners":
-        return getColorByElected(result.elected, result.substitute);
-      case "candidate":
-        return getColorByParty(result.party);
-      default:
-        return '#6b7280';
-    }
-  };
-
-  if (!isMounted || !leafletReady) {
+  if (!isMounted) {
     return (
       <div className="flex min-h-screen w-full">
         <Sidebar />
         <main className="flex-1 p-8 w-full">
           <div className="flex items-center justify-center h-full">
             <Skeleton className="w-full h-[700px]" />
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-screen w-full">
-        <Sidebar />
-        <main className="flex-1 p-8 w-full">
-          <div className="space-y-8">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">Mapas de Calor Eleitoral</h1>
-              <p className="text-muted-foreground">
-                Visualização geográfica dos resultados eleitorais do TSE
-              </p>
-            </div>
-
-            {/* Main Content: Map + Sidebars */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Left Sidebar - Stats & Filters */}
-              <div className="lg:col-span-3">
-                <StatsSidebar
-                  filters={filters}
-                  onFilterChange={(newFilters) => setFilters({ ...filters, ...newFilters })}
-                  stats={stats}
-                  availableStates={availableStates}
-                  availableParties={availableParties}
-                  onReseedData={() => {
-                    refetch();
-                    toast.success("Dados recarregados com sucesso!");
-                  }}
-                />
-              </div>
-
-              {/* Map */}
-              <div className="lg:col-span-7">
-                <div className="h-[700px] rounded-lg overflow-hidden border bg-card">
-                  {isLoading ? (
-                    <div className="flex items-center justify-center h-full">
-                      <Skeleton className="w-full h-full" />
-                    </div>
-                  ) : (
-                    <Suspense
-                      fallback={
-                        <div className="flex items-center justify-center h-full">
-                          <Skeleton className="w-full h-full" />
-                        </div>
-                      }
-                    >
-                      <MapContainer
-                        center={[-14.235, -51.925]}
-                        zoom={4}
-                        style={{ height: "100%", width: "100%" }}
-                        className="z-0"
-                      >
-                        <TileLayer
-                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        />
-                        {results.map((result) => (
-                          <CircleMarker
-                            key={result.id}
-                            center={[result.latitude, result.longitude]}
-                            radius={6}
-                            fillColor={getMarkerColor(result)}
-                            color="#fff"
-                            weight={1}
-                            opacity={1}
-                            fillOpacity={0.7}
-                          >
-                            <Popup>
-                              <div className="space-y-1">
-                                <p className="font-bold">{result.candidate_name}</p>
-                                <p className="text-sm">{result.party} - {result.coalition_side}</p>
-                                <p className="text-sm">Votos: {result.votes.toLocaleString()}</p>
-                                <p className="text-sm">
-                                  {result.city}, {result.state}
-                                </p>
-                              </div>
-                            </Popup>
-                          </CircleMarker>
-                        ))}
-                      </MapContainer>
-                    </Suspense>
-                  )}
-                </div>
-              </div>
-
-              {/* Right Sidebar - Legend & Controls */}
-              <div className="lg:col-span-2">
-                <HeatLegend viewMode={viewMode} onViewModeChange={setViewMode} />
-              </div>
-            </div>
-
-            {/* Analytics Sections */}
-            <div className="space-y-6">
-              <Collapsible defaultOpen>
-                <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card rounded-lg hover:bg-accent">
-                  <h2 className="text-2xl font-bold">Votos por Candidato</h2>
-                  <ChevronDown className="h-5 w-5" />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-4">
-                  <VotesByCandidateChart data={candidateVotes} />
-                </CollapsibleContent>
-              </Collapsible>
-
-              <Collapsible defaultOpen>
-                <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card rounded-lg hover:bg-accent">
-                  <h2 className="text-2xl font-bold">Votos por Partido</h2>
-                  <ChevronDown className="h-5 w-5" />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-4">
-                  <VotesByPartyChart data={partyVotes} />
-                </CollapsibleContent>
-              </Collapsible>
-
-              <Collapsible defaultOpen>
-                <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-card rounded-lg hover:bg-accent">
-                  <h2 className="text-2xl font-bold">Eleitos e Suplentes</h2>
-                  <ChevronDown className="h-5 w-5" />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-4">
-                  <WinnersTable data={winnersData} />
-                </CollapsibleContent>
-              </Collapsible>
-            </div>
           </div>
         </main>
       </div>
@@ -434,6 +231,13 @@ export default function Mapas() {
               Visualização geográfica dos resultados eleitorais do TSE
             </p>
           </div>
+
+          {error && (
+            <div className="flex items-center gap-2 p-4 bg-destructive/10 text-destructive rounded-lg">
+              <AlertCircle className="h-5 w-5" />
+              <p>Erro ao carregar dados. Tente novamente.</p>
+            </div>
+          )}
 
           {/* Main Content: Map + Sidebars */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -460,47 +264,8 @@ export default function Mapas() {
                     <Skeleton className="w-full h-full" />
                   </div>
                 ) : (
-                  <Suspense
-                    fallback={
-                      <div className="flex items-center justify-center h-full">
-                        <Skeleton className="w-full h-full" />
-                      </div>
-                    }
-                  >
-                    <MapContainer
-                      center={[-14.235, -51.925]}
-                      zoom={4}
-                      style={{ height: "100%", width: "100%" }}
-                      className="z-0"
-                    >
-                      <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      {results.map((result) => (
-                        <CircleMarker
-                          key={result.id}
-                          center={[result.latitude, result.longitude]}
-                          radius={6}
-                          fillColor={getMarkerColor(result)}
-                          color="#fff"
-                          weight={1}
-                          opacity={1}
-                          fillOpacity={0.7}
-                        >
-                          <Popup>
-                            <div className="space-y-1">
-                              <p className="font-bold">{result.candidate_name}</p>
-                              <p className="text-sm">{result.party} - {result.coalition_side}</p>
-                              <p className="text-sm">Votos: {result.votes.toLocaleString()}</p>
-                              <p className="text-sm">
-                                {result.city}, {result.state}
-                              </p>
-                            </div>
-                          </Popup>
-                        </CircleMarker>
-                      ))}
-                    </MapContainer>
+                  <Suspense fallback={<Skeleton className="w-full h-full" />}>
+                    <MapView results={results} viewMode={viewMode} />
                   </Suspense>
                 )}
               </div>
