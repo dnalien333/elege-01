@@ -1,136 +1,236 @@
-import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import { supabase } from '@/lib/supabase';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
 
-// Fix Leaflet default marker icons
-delete L.Icon.Default.prototype._getIconUrl;
+import Sidebar from "@/components/layout/Sidebar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+
+// Ensure leaflet markers load correctly in bundlers
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
 });
 
-// Custom colored markers
-const createColoredIcon = (color: string) => {
-  return L.divIcon({
-    className: 'custom-marker',
-    html: `<div style="background-color: ${color}; width: 25px; height: 25px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>`,
-    iconSize: [25, 25],
-    iconAnchor: [12, 12],
-  });
+type CoalitionSide = "left" | "right" | "center";
+
+type DemoResult = {
+  id: string;
+  city: string;
+  state: string;
+  candidate: string;
+  party: string;
+  votes: number;
+  coalition: CoalitionSide;
+  coordinates: [number, number];
+  status: "Eleito" | "Suplente" | "Não eleito";
 };
 
-const greenIcon = createColoredIcon('#22C55E'); // Apoiador
-const yellowIcon = createColoredIcon('#F59E0B'); // Indeciso
-const redIcon = createColoredIcon('#EF4444'); // Opositor
-const blueIcon = createColoredIcon('#3B82F6'); // Default
+const demoResults: DemoResult[] = [
+  {
+    id: "sp-1",
+    city: "São Paulo",
+    state: "SP",
+    candidate: "Maria Andrade",
+    party: "PT",
+    votes: 154_230,
+    coalition: "left",
+    coordinates: [-23.55052, -46.633308],
+    status: "Eleito",
+  },
+  {
+    id: "rj-1",
+    city: "Rio de Janeiro",
+    state: "RJ",
+    candidate: "João Mendes",
+    party: "PL",
+    votes: 128_940,
+    coalition: "right",
+    coordinates: [-22.906847, -43.172897],
+    status: "Eleito",
+  },
+  {
+    id: "mg-1",
+    city: "Belo Horizonte",
+    state: "MG",
+    candidate: "Fernanda Costa",
+    party: "PSD",
+    votes: 98_210,
+    coalition: "center",
+    coordinates: [-19.916681, -43.934493],
+    status: "Suplente",
+  },
+  {
+    id: "ba-1",
+    city: "Salvador",
+    state: "BA",
+    candidate: "Carlos Santana",
+    party: "MDB",
+    votes: 86_500,
+    coalition: "center",
+    coordinates: [-12.977749, -38.50163],
+    status: "Não eleito",
+  },
+  {
+    id: "pr-1",
+    city: "Curitiba",
+    state: "PR",
+    candidate: "Ana Paula",
+    party: "PSDB",
+    votes: 74_320,
+    coalition: "right",
+    coordinates: [-25.428954, -49.273251],
+    status: "Suplente",
+  },
+];
 
-export default function Mapas() {
-  const [voters, setVoters] = useState([]);
-  const [loading, setLoading] = useState(true);
+const coalitionColors: Record<CoalitionSide, string> = {
+  left: "#ef4444",
+  right: "#3b82f6",
+  center: "#9ca3af",
+};
+
+const statusColors: Record<DemoResult["status"], string> = {
+  Eleito: "bg-emerald-500 text-white",
+  Suplente: "bg-amber-500 text-white",
+  "Não eleito": "bg-slate-400 text-white",
+};
+
+const Mapas = () => {
+  const navigate = useNavigate();
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    fetchVoters();
+    setIsMounted(true);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate("/auth");
+      }
+    });
+  }, [navigate]);
+
+  const totals = useMemo(() => {
+    const totalVotes = demoResults.reduce((acc, result) => acc + result.votes, 0);
+    const winners = demoResults.filter((result) => result.status === "Eleito").length;
+    const suplentes = demoResults.filter((result) => result.status === "Suplente").length;
+    return { totalVotes, winners, suplentes };
   }, []);
 
-  const fetchVoters = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('voters')
-        .select('*')
-        .not('latitude', 'is', null)
-        .not('longitude', 'is', null);
-
-      if (error) throw error;
-      setVoters(data || []);
-    } catch (error) {
-      console.error('Error fetching voters:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getMarkerIcon = (tags: string) => {
-    if (!tags) return blueIcon;
-    const lowerTags = tags.toLowerCase();
-    if (lowerTags.includes('apoiador')) return greenIcon;
-    if (lowerTags.includes('indeciso')) return yellowIcon;
-    if (lowerTags.includes('opositor')) return redIcon;
-    return blueIcon;
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-lg">Carregando mapa...</div>
-      </div>
-    );
+  if (!isMounted) {
+    return null;
   }
 
   return (
-    <div className="h-screen flex flex-col">
-      <div className="p-6 bg-white border-b">
-        <h1 className="text-2xl font-bold">Mapas</h1>
-        <p className="text-gray-600">Visualize eleitores no mapa</p>
-      </div>
+    <div className="flex min-h-screen w-full bg-background">
+      <Sidebar />
+      <main className="flex-1 w-full p-6 lg:p-8 space-y-6 overflow-y-auto">
+        <header className="space-y-2">
+          <h1 className="text-3xl font-bold">Panorama Eleitoral</h1>
+          <p className="text-muted-foreground">
+            Visualização simplificada dos principais resultados da última eleição municipal.
+          </p>
+        </header>
 
-      <div className="flex-1 relative">
-        <MapContainer
-          center={[-23.5505, -46.6333]} // São Paulo
-          zoom={11}
-          style={{ height: '100%', width: '100%' }}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-
-          {voters.map((voter) => (
-            <Marker
-              key={voter.id}
-              position={[voter.latitude, voter.longitude]}
-              icon={getMarkerIcon(voter.tags)}
-            >
-              <Popup>
-                <div className="p-2">
-                  <h3 className="font-bold">{voter.name}</h3>
-                  <p className="text-sm text-gray-600">{voter.city}, {voter.state}</p>
-                  {voter.tags && (
-                    <div className="mt-2">
-                      {voter.tags.split(',').map((tag, i) => (
-                        <span key={i} className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded mr-1">
-                          {tag.trim()}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <section className="xl:col-span-4 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Resumo Rápido</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Total de votos analisados</span>
+                  <span className="text-xl font-semibold">{totals.totalVotes.toLocaleString("pt-BR")}</span>
                 </div>
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Candidatos eleitos</span>
+                  <span className="text-xl font-semibold">{totals.winners}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Suplentes</span>
+                  <span className="text-xl font-semibold">{totals.suplentes}</span>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Legend */}
-        <div className="absolute bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg z-[1000]">
-          <h4 className="font-bold mb-2">Legenda</h4>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-green-500"></div>
-              <span className="text-sm">Apoiador</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-              <span className="text-sm">Indeciso</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-red-500"></div>
-              <span className="text-sm">Opositor</span>
-            </div>
-          </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Como ler o mapa</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-muted-foreground">
+                <p>Cada ponto representa um município com dados da eleição simulada.</p>
+                <p>As cores indicam o espectro da coligação:</p>
+                <ul className="space-y-1 pl-4">
+                  <li className="list-disc text-rose-500">Esquerda</li>
+                  <li className="list-disc text-blue-500">Direita</li>
+                  <li className="list-disc text-gray-500">Centro</li>
+                </ul>
+                <p>O tamanho do marcador é fixo para manter a leitura simples no protótipo.</p>
+              </CardContent>
+            </Card>
+          </section>
+
+          <section className="xl:col-span-8">
+            <Card className="h-[600px]">
+              <CardHeader>
+                <CardTitle>Mapa Interativo</CardTitle>
+              </CardHeader>
+              <CardContent className="h-full">
+                <MapContainer
+                  center={[-15.77972, -47.92972]}
+                  zoom={4}
+                  className="h-full rounded-md"
+                  scrollWheelZoom
+                >
+                  <TileLayer
+                    attribution="&copy; OpenStreetMap contributors"
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  {demoResults.map((result) => (
+                    <CircleMarker
+                      key={result.id}
+                      center={result.coordinates}
+                      radius={14}
+                      pathOptions={{
+                        color: "#ffffff",
+                        weight: 1,
+                        fillColor: coalitionColors[result.coalition],
+                        fillOpacity: 0.85,
+                      }}
+                    >
+                      <Popup>
+                        <div className="space-y-1">
+                          <p className="font-semibold">{result.candidate}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {result.city} / {result.state}
+                          </p>
+                          <p className="text-sm">Partido: {result.party}</p>
+                          <p className="text-sm font-medium">
+                            {result.votes.toLocaleString("pt-BR")} votos
+                          </p>
+                          <Badge className={statusColors[result.status]}>{result.status}</Badge>
+                        </div>
+                      </Popup>
+                    </CircleMarker>
+                  ))}
+                </MapContainer>
+              </CardContent>
+            </Card>
+          </section>
         </div>
-      </div>
+      </main>
     </div>
   );
-}
+};
+
+export default Mapas;
