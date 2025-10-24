@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -74,8 +74,11 @@ export default function ColaboradorModal({ isOpen, onClose, colaborador, current
     }
   }, [colaborador, form]);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const onSubmit = async (data: ColaboradorFormData) => {
     try {
+      setIsSubmitting(true);
       if (!currentCampaignId) {
         toast.error('Nenhuma campanha selecionada');
         return;
@@ -103,7 +106,7 @@ export default function ColaboradorModal({ isOpen, onClose, colaborador, current
           .eq('id', colaborador.id);
         
         if (error) throw error;
-        toast.success('Colaborador atualizado com sucesso');
+        toast.success('Colaborador atualizado com sucesso!');
       } else {
         const { error } = await supabase
           .from('colaboradores')
@@ -113,15 +116,17 @@ export default function ColaboradorModal({ isOpen, onClose, colaborador, current
           }]);
         
         if (error) throw error;
-        toast.success('Colaborador criado com sucesso');
+        toast.success('Colaborador cadastrado com sucesso!');
       }
 
       queryClient.invalidateQueries({ queryKey: ['colaboradores'] });
       onClose();
       form.reset();
-    } catch (error) {
-      toast.error('Erro ao salvar colaborador');
+    } catch (error: any) {
+      toast.error('Erro ao salvar colaborador: ' + (error.message || ''));
       console.error(error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -257,14 +262,20 @@ export default function ColaboradorModal({ isOpen, onClose, colaborador, current
             />
 
             <DialogFooter>
-              <button type="button" className="px-4 py-2 border rounded-lg hover:bg-muted" onClick={onClose}>
+              <button 
+                type="button" 
+                className="px-4 py-2 border rounded-lg hover:bg-muted" 
+                onClick={onClose}
+                disabled={isSubmitting}
+              >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                disabled={isSubmitting}
               >
-                Salvar
+                {isSubmitting ? 'Salvando...' : 'Salvar'}
               </button>
             </DialogFooter>
           </form>

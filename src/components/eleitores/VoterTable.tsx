@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Loader2, Users, AlertCircle, Download, Upload, MoreVertical, Edit, Trash2 } from "lucide-react";
+import { Loader2, Users, AlertCircle, Download, Upload, MoreVertical, Edit, Trash2, Eye } from "lucide-react";
 import { exportToCSV } from "@/lib/csvUtils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -23,7 +23,18 @@ interface VoterTableProps {
 
 export default function VoterTable({ filters, page = 1, onEdit, onDelete, onImportCSV, currentCampaignId, searchTerm = "" }: VoterTableProps) {
   const [selectedVoters, setSelectedVoters] = useState<string[]>([]);
+  const [sortField, setSortField] = useState<string>('full_name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const queryClient = useQueryClient();
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
   const { data: voters = [], isLoading, error, refetch } = useQuery({
     queryKey: ["voters", currentCampaignId, filters, page, searchTerm],
@@ -32,7 +43,6 @@ export default function VoterTable({ filters, page = 1, onEdit, onDelete, onImpo
         .from("voters")
         .select("*")
         .eq("campaign_id", currentCampaignId)
-        .order("created_at", { ascending: false })
         .range((page - 1) * 50, page * 50 - 1);
 
       if (filters?.tags?.length) {
@@ -56,6 +66,13 @@ export default function VoterTable({ filters, page = 1, onEdit, onDelete, onImpo
     },
     enabled: !!currentCampaignId,
   });
+
+  const sortedVoters = voters ? [...voters].sort((a, b) => {
+    const aVal = a[sortField] || '';
+    const bVal = b[sortField] || '';
+    const comparison = aVal.toString().localeCompare(bVal.toString());
+    return sortDirection === 'asc' ? comparison : -comparison;
+  }) : [];
 
   const bulkAddTagMutation = useMutation({
     mutationFn: async (tag: string) => {
@@ -172,17 +189,32 @@ export default function VoterTable({ filters, page = 1, onEdit, onDelete, onImpo
           <TableHeader>
             <TableRow>
               <TableHead className="w-12"></TableHead>
-              <TableHead>Nome</TableHead>
-              <TableHead>Cidade</TableHead>
-              <TableHead>Estado</TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => handleSort('full_name')}
+              >
+                Nome {sortField === 'full_name' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => handleSort('city')}
+              >
+                Cidade {sortField === 'city' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead 
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => handleSort('state')}
+              >
+                Estado {sortField === 'state' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </TableHead>
               <TableHead>Tags</TableHead>
               <TableHead>Último Contato</TableHead>
               <TableHead>Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {voters.map((voter: any) => (
-              <TableRow key={voter.id}>
+            {sortedVoters.map((voter: any) => (
+              <TableRow key={voter.id} className="hover:bg-muted/30 transition-colors">
                 <TableCell>
                   <Checkbox
                     checked={selectedVoters.includes(voter.id)}
@@ -217,6 +249,10 @@ export default function VoterTable({ filters, page = 1, onEdit, onDelete, onImpo
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onEdit(voter)}>
+                        <Eye className="w-4 h-4 mr-2" />
+                        Ver Detalhes
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onEdit(voter)}>
                         <Edit className="w-4 h-4 mr-2" />
                         Editar

@@ -1,4 +1,5 @@
-import { Loader2, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Loader2, MoreVertical, Edit, Trash2, Eye, UserCog } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -12,6 +13,25 @@ interface ColaboradorTableProps {
 }
 
 export default function ColaboradorTable({ colaboradores, isLoading, onEdit, onDelete }: ColaboradorTableProps) {
+  const [sortField, setSortField] = useState<string>('full_name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedColaboradores = colaboradores ? [...colaboradores].sort((a, b) => {
+    const aVal = a[sortField] || '';
+    const bVal = b[sortField] || '';
+    const comparison = aVal.toString().localeCompare(bVal.toString());
+    return sortDirection === 'asc' ? comparison : -comparison;
+  }) : [];
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -22,8 +42,12 @@ export default function ColaboradorTable({ colaboradores, isLoading, onEdit, onD
 
   if (!colaboradores || colaboradores.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        Nenhum colaborador encontrado
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <UserCog className="w-16 h-16 text-muted mb-4" />
+        <h3 className="text-lg font-semibold">Nenhum colaborador encontrado</h3>
+        <p className="text-muted-foreground mt-2">
+          Adicione seu primeiro colaborador para começar
+        </p>
       </div>
     );
   }
@@ -33,18 +57,33 @@ export default function ColaboradorTable({ colaboradores, isLoading, onEdit, onD
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Nome</TableHead>
-            <TableHead>Email</TableHead>
+            <TableHead 
+              className="cursor-pointer hover:bg-muted/50"
+              onClick={() => handleSort('full_name')}
+            >
+              Nome {sortField === 'full_name' && (sortDirection === 'asc' ? '↑' : '↓')}
+            </TableHead>
+            <TableHead 
+              className="cursor-pointer hover:bg-muted/50"
+              onClick={() => handleSort('email')}
+            >
+              Email {sortField === 'email' && (sortDirection === 'asc' ? '↑' : '↓')}
+            </TableHead>
             <TableHead>Telefone</TableHead>
-            <TableHead>Cidade</TableHead>
+            <TableHead 
+              className="cursor-pointer hover:bg-muted/50"
+              onClick={() => handleSort('city')}
+            >
+              Cidade {sortField === 'city' && (sortDirection === 'asc' ? '↑' : '↓')}
+            </TableHead>
             <TableHead>Função</TableHead>
             <TableHead>Tags</TableHead>
             <TableHead className="text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {colaboradores.map((colaborador) => (
-            <TableRow key={colaborador.id}>
+          {sortedColaboradores.map((colaborador) => (
+            <TableRow key={colaborador.id} className="hover:bg-muted/30 transition-colors">
               <TableCell className="font-medium">{colaborador.full_name}</TableCell>
               <TableCell>{colaborador.email || '-'}</TableCell>
               <TableCell>{colaborador.phone || '-'}</TableCell>
@@ -55,14 +94,16 @@ export default function ColaboradorTable({ colaboradores, isLoading, onEdit, onD
                 </Badge>
               </TableCell>
               <TableCell>
-                {colaborador.tags?.slice(0, 2).map((tag: string, idx: number) => (
-                  <Badge key={idx} variant="outline" className="mr-1">
-                    {tag}
-                  </Badge>
-                ))}
-                {colaborador.tags?.length > 2 && (
-                  <Badge variant="outline">+{colaborador.tags.length - 2}</Badge>
-                )}
+                <div className="flex gap-1 flex-wrap">
+                  {colaborador.tags?.slice(0, 2).map((tag: string, idx: number) => (
+                    <Badge key={idx} variant="outline" className="mr-1">
+                      {tag}
+                    </Badge>
+                  ))}
+                  {colaborador.tags?.length > 2 && (
+                    <Badge variant="outline">+{colaborador.tags.length - 2}</Badge>
+                  )}
+                </div>
               </TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
@@ -72,6 +113,10 @@ export default function ColaboradorTable({ colaboradores, isLoading, onEdit, onD
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onEdit(colaborador)}>
+                      <Eye className="w-4 h-4 mr-2" />
+                      Ver Detalhes
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onEdit(colaborador)}>
                       <Edit className="w-4 h-4 mr-2" />
                       Editar

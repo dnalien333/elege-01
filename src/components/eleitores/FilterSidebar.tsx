@@ -20,7 +20,18 @@ export default function FilterSidebar({ filters, setFilters, currentCampaignId, 
   const [selectedTags, setSelectedTags] = useState<string>("");
   const [selectedCity, setSelectedCity] = useState("");
   const [selectedState, setSelectedState] = useState("");
+  const [activeSegment, setActiveSegment] = useState<string>("");
   const queryClient = useQueryClient();
+
+  // Predefined segments
+  const predefinedSegments = {
+    todos: { name: "Todos", filters: {} },
+    apoiadores: { name: "Apoiadores", filters: { tags: ["apoiador", "voluntário"] } },
+    indecisos: { name: "Indecisos", filters: { tags: ["indeciso"] } },
+    opositores: { name: "Opositores", filters: { tags: ["opositor"] } },
+    jovens: { name: "Jovens", filters: { tags: ["jovem", "estudante"] } },
+    mulheres: { name: "Mulheres", filters: { tags: ["mulher"] } },
+  };
 
   const { data: segments = [] } = useQuery({
     queryKey: ["saved-filters", currentCampaignId],
@@ -64,7 +75,21 @@ export default function FilterSidebar({ filters, setFilters, currentCampaignId, 
     },
   });
 
+  const handleLoadPredefinedSegment = (segmentKey: string) => {
+    setActiveSegment(segmentKey);
+    const segment = predefinedSegments[segmentKey as keyof typeof predefinedSegments];
+    if (segment) {
+      const segmentFilters = segment.filters as any;
+      const tags = segmentFilters.tags || [];
+      setSelectedTags(tags.join(", "));
+      setSelectedCity("");
+      setSelectedState("");
+      setFilters(segment.filters);
+    }
+  };
+
   const handleLoadSegment = (segmentId: string) => {
+    setActiveSegment("");
     const segment = segments.find((s: any) => s.id === segmentId);
     if (segment?.filters) {
       const filters = segment.filters as any;
@@ -91,6 +116,7 @@ export default function FilterSidebar({ filters, setFilters, currentCampaignId, 
     setSelectedTags("");
     setSelectedCity("");
     setSelectedState("");
+    setActiveSegment("");
     setFilters({});
   };
 
@@ -112,20 +138,38 @@ export default function FilterSidebar({ filters, setFilters, currentCampaignId, 
         )}
 
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Segmentos Salvos</Label>
-          <Select onValueChange={handleLoadSegment}>
+          <Label className="text-sm font-medium">Segmentos Predefinidos</Label>
+          <Select value={activeSegment} onValueChange={handleLoadPredefinedSegment}>
             <SelectTrigger>
               <SelectValue placeholder="-- Escolher --" />
             </SelectTrigger>
             <SelectContent>
-              {segments.map((s: any) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.name}
+              {Object.entries(predefinedSegments).map(([key, segment]) => (
+                <SelectItem key={key} value={key}>
+                  {segment.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+
+        {segments.length > 0 && (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Segmentos Salvos</Label>
+            <Select onValueChange={handleLoadSegment}>
+              <SelectTrigger>
+                <SelectValue placeholder="-- Escolher --" />
+              </SelectTrigger>
+              <SelectContent>
+                {segments.map((s: any) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label className="text-sm font-medium">Tags</Label>
