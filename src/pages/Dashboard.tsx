@@ -24,6 +24,7 @@ const Dashboard = () => {
     metasTotal: 5,
   });
   const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [myTasks, setMyTasks] = useState<any[]>([]);
 
   // Mock chart data for last 30 days
   const cadastrosChartData = Array.from({ length: 30 }, (_, i) => ({
@@ -58,6 +59,25 @@ const Dashboard = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  useEffect(() => {
+    if (user) {
+      const loadMyTasks = async () => {
+        const { data } = await supabase
+          .from("demands")
+          .select("*")
+          .eq("assigned_to", user.id)
+          .in("status", ["pending", "in_progress"])
+          .order("created_at", { ascending: false })
+          .limit(5);
+        
+        if (data) {
+          setMyTasks(data);
+        }
+      };
+      loadMyTasks();
+    }
+  }, [user]);
 
   const loadStats = async (userId: string) => {
     try {
@@ -111,28 +131,6 @@ const Dashboard = () => {
   if (!user) {
     return null;
   }
-
-  // Fetch real pending tasks
-  const [myTasks, setMyTasks] = useState<any[]>([]);
-  
-  useEffect(() => {
-    if (user) {
-      const loadMyTasks = async () => {
-        const { data } = await supabase
-          .from("demands")
-          .select("*")
-          .eq("assigned_to", user.id)
-          .in("status", ["pending", "in_progress"])
-          .order("created_at", { ascending: false })
-          .limit(5);
-        
-        if (data) {
-          setMyTasks(data);
-        }
-      };
-      loadMyTasks();
-    }
-  }, [user]);
 
   const mockActivities = [
     { id: 1, type: "voter_added", user: "João Silva", description: "adicionou 15 novos eleitores", time: "há 2 horas" },
