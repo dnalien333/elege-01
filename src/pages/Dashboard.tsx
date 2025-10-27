@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, MessageSquare, BarChart3, TrendingUp } from "lucide-react";
+import { Users, MessageSquare, BarChart3, Target, Calendar, Plus, ChevronDown, ClipboardList, UserPlus, Flag } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import Sidebar from "@/components/layout/Sidebar";
 import QuickActionsBar from "@/components/QuickActionsBar";
 import { Card as TaskCard } from "@/components/ui/card";
@@ -16,8 +19,24 @@ const Dashboard = () => {
     voters: 0,
     communications: 0,
     segments: 0,
-    campaigns: 0,
+    demands: 0,
+    metasCompleted: 3,
+    metasTotal: 5,
   });
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+
+  // Mock chart data for last 30 days
+  const cadastrosChartData = Array.from({ length: 30 }, (_, i) => ({
+    day: i + 1,
+    cadastros: Math.floor(5 + (i * 1.5) + Math.random() * 5)
+  }));
+
+  // Mock upcoming events
+  const upcomingEvents = [
+    { id: 1, title: "Reunião com equipe Zona Norte", date: "2025-10-25", time: "14:00" },
+    { id: 2, title: "Visita aos apoiadores", date: "2025-10-26", time: "09:00" },
+    { id: 3, title: "Evento comunitário", date: "2025-10-28", time: "16:00" },
+  ];
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -69,11 +88,19 @@ const Dashboard = () => {
           .select("*", { count: "exact", head: true })
           .in("campaign_id", campaignIds);
 
+        // Count demands
+        const { count: demandsCount } = await supabase
+          .from("demands")
+          .select("*", { count: "exact", head: true })
+          .in("campaign_id", campaignIds);
+
         setStats({
           voters: votersCount || 0,
           communications: commsCount || 0,
           segments: segmentsCount || 0,
-          campaigns: campaigns?.length || 0,
+          demands: demandsCount || 0,
+          metasCompleted: 3,
+          metasTotal: 5,
         });
       }
     } catch (error) {
@@ -85,11 +112,27 @@ const Dashboard = () => {
     return null;
   }
 
-  const mockTasks = [
-    { id: 1, title: "Ligar para eleitores zona sul", priority: "high", status: "pending", dueDate: "Hoje" },
-    { id: 2, title: "Revisar comunicação segmento apoiadores", priority: "medium", status: "in_progress", dueDate: "Amanhã" },
-    { id: 3, title: "Reunião com equipe norte", priority: "low", status: "completed", dueDate: "Ontem" },
-  ];
+  // Fetch real pending tasks
+  const [myTasks, setMyTasks] = useState<any[]>([]);
+  
+  useEffect(() => {
+    if (user) {
+      const loadMyTasks = async () => {
+        const { data } = await supabase
+          .from("demands")
+          .select("*")
+          .eq("assigned_to", user.id)
+          .in("status", ["pending", "in_progress"])
+          .order("created_at", { ascending: false })
+          .limit(5);
+        
+        if (data) {
+          setMyTasks(data);
+        }
+      };
+      loadMyTasks();
+    }
+  }, [user]);
 
   const mockActivities = [
     { id: 1, type: "voter_added", user: "João Silva", description: "adicionou 15 novos eleitores", time: "há 2 horas" },
@@ -101,10 +144,35 @@ const Dashboard = () => {
     <div className="flex min-h-screen w-full">
       <Sidebar />
       <main className="flex-1">
-        <QuickActionsBar 
-          onOpenVoterModal={() => navigate('/cadastros')}
-          onOpenColaboradorModal={() => navigate('/cadastros')}
-        />
+        <div className="sticky top-0 z-10 bg-background border-b shadow-sm">
+          <div className="px-6 py-3 flex items-center gap-4">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase">Ações Rápidas</h2>
+            <DropdownMenu open={showActionsMenu} onOpenChange={setShowActionsMenu}>
+              <DropdownMenuTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" /> Novo Cadastro <ChevronDown className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => navigate('/cadastros')}>
+                  <Users className="w-4 h-4 mr-2" /> Novo Eleitor
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/cadastros')}>
+                  <UserPlus className="w-4 h-4 mr-2" /> Novo Colaborador
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/demandas')}>
+                  <ClipboardList className="w-4 h-4 mr-2" /> Nova Demanda
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/gestao-equipe')}>
+                  <Flag className="w-4 h-4 mr-2" /> Nova Equipe
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/metas')}>
+                  <Target className="w-4 h-4 mr-2" /> Nova Meta
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
         <div className="max-w-7xl mx-auto p-8 space-y-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">
@@ -116,7 +184,7 @@ const Dashboard = () => {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <Card className="border-l-4 border-l-primary">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -147,62 +215,101 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-accent">
+            <Card 
+              className="border-l-4 border-l-accent cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => navigate('/metas')}
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Segmentos
+                  Metas Atingidas
                 </CardTitle>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.segments}</div>
+                <div className="text-2xl font-bold">{stats.metasCompleted}/{stats.metasTotal}</div>
                 <p className="text-xs text-muted-foreground">
-                  Segmentações ativas
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-primary">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Campanhas
-                </CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.campaigns}</div>
-                <p className="text-xs text-muted-foreground">
-                  Campanhas criadas
+                  concluídas ({Math.round((stats.metasCompleted / stats.metasTotal) * 100)}%)
                 </p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Minhas Tarefas */}
+          {/* Chart - Cadastros Last 30 Days */}
           <Card>
             <CardHeader>
-              <CardTitle>Minhas Tarefas</CardTitle>
-              <CardDescription>Atividades pendentes e em andamento</CardDescription>
+              <CardTitle>Cadastros nos Últimos 30 Dias</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={cadastrosChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" label={{ value: 'Dia', position: 'insideBottom', offset: -5 }} />
+                  <YAxis label={{ value: 'Cadastros', angle: -90, position: 'insideLeft' }} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="cadastros" stroke="#22C55E" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Próximos Eventos */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Próximos Eventos</CardTitle>
+                <Button variant="link" onClick={() => navigate('/demandas')}>Ver Todos</Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {mockTasks.map(task => (
-                  <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg">
+                {upcomingEvents.map(event => (
+                  <div key={event.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                     <div className="flex items-center gap-3">
-                      {task.status === "completed" && <CheckCircle2 className="h-5 w-5 text-primary" />}
-                      {task.status === "in_progress" && <Clock className="h-5 w-5 text-accent" />}
-                      {task.status === "pending" && <AlertCircle className="h-5 w-5 text-muted-foreground" />}
+                      <Calendar className="h-5 w-5 text-primary" />
                       <div>
-                        <p className="font-medium">{task.title}</p>
-                        <p className="text-sm text-muted-foreground">{task.dueDate}</p>
+                        <p className="font-medium">{event.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(event.date).toLocaleDateString('pt-BR')} às {event.time}
+                        </p>
                       </div>
                     </div>
-                    <Badge variant={task.priority === "high" ? "destructive" : task.priority === "medium" ? "default" : "secondary"}>
-                      {task.priority === "high" ? "Alta" : task.priority === "medium" ? "Média" : "Baixa"}
-                    </Badge>
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Minhas Tarefas - Dynamic */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Minhas Tarefas</CardTitle>
+              <CardDescription>Demandas atribuídas a mim</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {myTasks.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">Nenhuma tarefa pendente</p>
+              ) : (
+                <div className="space-y-3">
+                  {myTasks.map(task => (
+                    <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate('/demandas')}>
+                      <div className="flex items-center gap-3">
+                        {task.status === "completed" && <CheckCircle2 className="h-5 w-5 text-primary" />}
+                        {task.status === "in_progress" && <Clock className="h-5 w-5 text-accent" />}
+                        {task.status === "pending" && <AlertCircle className="h-5 w-5 text-muted-foreground" />}
+                        <div>
+                          <p className="font-medium">{task.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {task.deadline ? new Date(task.deadline).toLocaleDateString('pt-BR') : 'Sem prazo'}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant={task.priority === "high" || task.priority === "critical" ? "destructive" : "default"}>
+                        {task.priority === "high" || task.priority === "critical" ? "Alta" : task.priority === "medium" ? "Média" : "Baixa"}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
