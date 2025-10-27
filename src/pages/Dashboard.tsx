@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, MessageSquare, BarChart3, Target, Calendar, Plus, ChevronDown, ClipboardList, UserPlus, Flag } from "lucide-react";
+import { Users, MessageSquare, BarChart3, Target, Calendar, Plus, ChevronDown, ClipboardList, UserPlus, Flag, DollarSign } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -166,6 +166,9 @@ const Dashboard = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/metas')}>
                   <Target className="w-4 h-4 mr-2" /> Nova Meta
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/financeiro')}>
+                  <DollarSign className="w-4 h-4 mr-2" /> Nova Despesa
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
