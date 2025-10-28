@@ -191,7 +191,7 @@ const Campanhas = () => {
                   <CardContent>
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                       <span>Ano: {campaign.election_year}</span>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" disabled>
                         Ver Detalhes
                       </Button>
                     </div>

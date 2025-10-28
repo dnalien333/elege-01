@@ -249,7 +249,7 @@ export default function VoterTable({ filters, page = 1, onEdit, onDelete, onImpo
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEdit(voter)}>
+                      <DropdownMenuItem disabled>
                         <Eye className="w-4 h-4 mr-2" />
                         Ver Detalhes
                       </DropdownMenuItem>

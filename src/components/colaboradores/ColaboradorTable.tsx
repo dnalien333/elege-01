@@ -113,7 +113,7 @@ export default function ColaboradorTable({ colaboradores, isLoading, onEdit, onD
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onEdit(colaborador)}>
+                    <DropdownMenuItem disabled>
                       <Eye className="w-4 h-4 mr-2" />
                       Ver Detalhes
                     </DropdownMenuItem>
