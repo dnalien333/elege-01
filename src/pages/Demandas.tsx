@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Sidebar from "@/components/layout/Sidebar";
@@ -88,8 +88,14 @@ type Demand = {
 export default function Demandas() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [isMounted, setIsMounted] = useState(false);
-  const [viewMode, setViewMode] = useState<"table" | "kanban" | "calendar">("table");
+  
+  // Check URL params for initial view mode
+  const initialView = searchParams.get("view");
+  const [viewMode, setViewMode] = useState<"table" | "kanban" | "calendar">(
+    initialView === "calendar" ? "calendar" : "table"
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");

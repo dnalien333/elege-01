@@ -172,6 +172,9 @@ const Dashboard = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <Button variant="outline" onClick={() => navigate('/demandas?view=calendar')}>
+              <Calendar className="w-4 h-4 mr-2" /> Calendário
+            </Button>
           </div>
         </div>
         <div className="max-w-7xl mx-auto p-8 space-y-8">
