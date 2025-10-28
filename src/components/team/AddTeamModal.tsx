@@ -32,15 +32,29 @@ export default function AddTeamModal({ isOpen, onClose, team }: AddTeamModalProp
     team?.delivery_date ? new Date(team.delivery_date) : undefined
   );
 
-  const { data: colaboradores, refetch } = useQuery({
-    queryKey: ['colaboradores'],
+  const { data: campaigns } = useQuery({
+    queryKey: ['campaigns'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('full_name');
+        .from('campaigns')
+        .select('id')
+        .limit(1);
       return data;
     }
+  });
+
+  const { data: colaboradores, refetch } = useQuery({
+    queryKey: ['colaboradores', campaigns?.[0]?.id],
+    queryFn: async () => {
+      if (!campaigns?.[0]?.id) return [];
+      const { data } = await supabase
+        .from('colaboradores')
+        .select('*')
+        .eq('campaign_id', campaigns[0].id)
+        .order('full_name');
+      return data;
+    },
+    enabled: !!campaigns?.[0]?.id
   });
 
   useEffect(() => {
