@@ -164,10 +164,6 @@ const Dashboard = () => {
     }
   };
 
-  if (!user) {
-    return null;
-  }
-
   const mockActivities = [
     { id: 1, type: "voter_added", user: "João Silva", description: "adicionou 15 novos eleitores", time: "há 2 horas" },
     { id: 2, type: "communication_sent", user: "Maria Santos", description: "enviou comunicação para 200 eleitores", time: "há 5 horas" },
@@ -210,6 +206,10 @@ const Dashboard = () => {
     setSelectedDemand(event.resource);
     setShowDetailsModal(true);
   };
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="flex min-h-screen w-full">
