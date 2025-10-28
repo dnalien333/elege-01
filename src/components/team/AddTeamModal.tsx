@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -17,6 +17,7 @@ interface AddTeamModalProps {
 }
 
 export default function AddTeamModal({ isOpen, onClose, team }: AddTeamModalProps) {
+  const queryClient = useQueryClient();
   const [name, setName] = useState(team?.name || '');
   const [leaderId, setLeaderId] = useState(team?.leader_id || '');
   const [selectedMembers, setSelectedMembers] = useState<string[]>(
@@ -36,7 +37,7 @@ export default function AddTeamModal({ isOpen, onClose, team }: AddTeamModalProp
     }
   });
 
-  const { data: colaboradores, refetch } = useQuery({
+  const { data: colaboradores } = useQuery({
     queryKey: ['colaboradores', campaigns?.[0]?.id],
     queryFn: async () => {
       if (!campaigns?.[0]?.id) return [];
@@ -109,8 +110,10 @@ export default function AddTeamModal({ isOpen, onClose, team }: AddTeamModalProp
         }
         toast.success('Equipe criada com sucesso');
       }
+      
+      // Invalidate teams query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
       onClose();
-      refetch();
     } catch (error) {
       toast.error('Erro ao salvar equipe');
       console.error(error);
