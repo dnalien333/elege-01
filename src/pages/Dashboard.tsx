@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, MessageSquare, BarChart3, Target, Calendar, Plus, ChevronDown, ClipboardList, UserPlus, Flag, DollarSign } from "lucide-react";
+import { Users, MessageSquare, BarChart3, Target, Calendar as CalendarIcon, Plus, ChevronDown, ClipboardList, UserPlus, Flag, DollarSign } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,15 @@ import QuickActionsBar from "@/components/QuickActionsBar";
 import { Card as TaskCard } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Calendar, momentLocalizer, Event } from "react-big-calendar";
+import moment from "moment";
+import "moment/locale/pt-br";
+import "react-big-calendar/lib/css/react-big-calendar.css";
+import { DemandDetailsModal } from "@/components/demandas/DemandDetailsModal";
+
+moment.locale("pt-br");
+const localizer = momentLocalizer(moment);
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -25,6 +34,10 @@ const Dashboard = () => {
   });
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [myTasks, setMyTasks] = useState<any[]>([]);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [calendarDemands, setCalendarDemands] = useState<any[]>([]);
+  const [selectedDemand, setSelectedDemand] = useState<any | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Mock chart data for last 30 days
   const cadastrosChartData = Array.from({ length: 30 }, (_, i) => ({
@@ -76,6 +89,29 @@ const Dashboard = () => {
         }
       };
       loadMyTasks();
+      
+      const loadAllDemands = async () => {
+        // Get user's campaigns
+        const { data: campaigns } = await supabase
+          .from("campaigns")
+          .select("id")
+          .eq("owner_id", user.id);
+
+        const campaignIds = campaigns?.map(c => c.id) || [];
+
+        if (campaignIds.length > 0) {
+          const { data } = await supabase
+            .from("demands")
+            .select("*")
+            .in("campaign_id", campaignIds)
+            .order("created_at", { ascending: false });
+          
+          if (data) {
+            setCalendarDemands(data);
+          }
+        }
+      };
+      loadAllDemands();
     }
   }, [user]);
 
@@ -138,6 +174,43 @@ const Dashboard = () => {
     { id: 3, type: "segment_created", user: "Pedro Costa", description: "criou novo segmento 'Apoiadores Ativos'", time: "há 1 dia" },
   ];
 
+  // Convert demands to calendar events
+  const calendarEvents: Event[] = useMemo(() => {
+    return calendarDemands
+      .filter(d => d.deadline)
+      .map(d => ({
+        title: d.title,
+        start: new Date(d.deadline!),
+        end: new Date(d.deadline!),
+        resource: d,
+      }));
+  }, [calendarDemands]);
+
+  const eventStyleGetter = (event: Event) => {
+    const demand = event.resource;
+    let backgroundColor = "#94a3b8"; // default gray
+    
+    if (demand.status === "pending") backgroundColor = "#eab308"; // yellow
+    else if (demand.status === "in_progress") backgroundColor = "#3b82f6"; // blue
+    else if (demand.status === "completed") backgroundColor = "#22c55e"; // green
+    
+    return {
+      style: {
+        backgroundColor,
+        borderRadius: "4px",
+        opacity: 0.8,
+        color: "white",
+        border: "none",
+        display: "block",
+      },
+    };
+  };
+
+  const handleEventClick = (event: Event) => {
+    setSelectedDemand(event.resource);
+    setShowDetailsModal(true);
+  };
+
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar />
@@ -172,8 +245,8 @@ const Dashboard = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" onClick={() => navigate('/demandas?view=calendar')}>
-              <Calendar className="w-4 h-4 mr-2" /> Calendário
+            <Button variant="outline" onClick={() => setShowCalendarModal(true)}>
+              <CalendarIcon className="w-4 h-4 mr-2" /> Calendário
             </Button>
           </div>
         </div>
@@ -269,7 +342,7 @@ const Dashboard = () => {
                 {upcomingEvents.map(event => (
                   <div key={event.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                     <div className="flex items-center gap-3">
-                      <Calendar className="h-5 w-5 text-primary" />
+                      <CalendarIcon className="h-5 w-5 text-primary" />
                       <div>
                         <p className="font-medium">{event.title}</p>
                         <p className="text-sm text-muted-foreground">
@@ -341,6 +414,77 @@ const Dashboard = () => {
           </Card>
         </div>
       </main>
+
+      {/* Calendar Modal */}
+      <Dialog open={showCalendarModal} onOpenChange={setShowCalendarModal}>
+        <DialogContent className="max-w-[95vw] w-full h-[90vh] max-h-[900px]">
+          <DialogHeader>
+            <DialogTitle>Calendário de Demandas</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            <Calendar
+              localizer={localizer}
+              events={calendarEvents}
+              startAccessor="start"
+              endAccessor="end"
+              style={{ height: "calc(90vh - 120px)" }}
+              eventPropGetter={eventStyleGetter}
+              onSelectEvent={handleEventClick}
+              messages={{
+                next: "Próximo",
+                previous: "Anterior",
+                today: "Hoje",
+                month: "Mês",
+                week: "Semana",
+                day: "Dia",
+                agenda: "Agenda",
+                date: "Data",
+                time: "Hora",
+                event: "Evento",
+                noEventsInRange: "Nenhuma demanda neste período",
+                showMore: (total) => `+${total} mais`,
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Demand Details Modal */}
+      {selectedDemand && (
+        <DemandDetailsModal
+          open={showDetailsModal}
+          onOpenChange={(open) => {
+            setShowDetailsModal(open);
+            if (!open) {
+              // Reload demands when modal closes
+              if (user) {
+                const loadAllDemands = async () => {
+                  const { data: campaigns } = await supabase
+                    .from("campaigns")
+                    .select("id")
+                    .eq("owner_id", user.id);
+
+                  const campaignIds = campaigns?.map(c => c.id) || [];
+
+                  if (campaignIds.length > 0) {
+                    const { data } = await supabase
+                      .from("demands")
+                      .select("*")
+                      .in("campaign_id", campaignIds)
+                      .order("created_at", { ascending: false });
+                    
+                    if (data) {
+                      setCalendarDemands(data);
+                    }
+                  }
+                };
+                loadAllDemands();
+              }
+            }
+          }}
+          demand={selectedDemand}
+        />
+      )}
     </div>
   );
 };
