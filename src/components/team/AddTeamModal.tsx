@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
+
 import { cn } from '@/lib/utils';
 
 interface AddTeamModalProps {
@@ -181,34 +181,24 @@ export default function AddTeamModal({ isOpen, onClose, team }: AddTeamModalProp
           </div>
 
           <div>
-            <Label>Membros da Equipe</Label>
-            <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2 mt-1.5">
+            <Label htmlFor="members">Membros da Equipe</Label>
+            <select
+              id="members"
+              multiple
+              className="w-full px-3 py-2 border rounded-md mt-1.5 bg-background min-h-[120px]"
+              value={selectedMembers}
+              onChange={(e) => {
+                const selected = Array.from(e.target.selectedOptions, option => option.value);
+                setSelectedMembers(selected);
+              }}
+            >
               {colaboradores?.filter((c) => c.id !== leaderId).map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center gap-2 p-2 hover:bg-muted rounded cursor-pointer"
-                  onClick={() => {
-                    if (selectedMembers.includes(c.id)) {
-                      setSelectedMembers(selectedMembers.filter((id) => id !== c.id));
-                    } else {
-                      setSelectedMembers([...selectedMembers, c.id]);
-                    }
-                  }}
-                >
-                  <Checkbox
-                    checked={selectedMembers.includes(c.id)}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        setSelectedMembers([...selectedMembers, c.id]);
-                      } else {
-                        setSelectedMembers(selectedMembers.filter((id) => id !== c.id));
-                      }
-                    }}
-                  />
-                  <span>{c.full_name}</span>
-                </div>
+                <option key={c.id} value={c.id}>{c.full_name}</option>
               ))}
-            </div>
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Segure Ctrl (Cmd no Mac) para selecionar múltiplos membros
+            </p>
           </div>
         </div>
         <DialogFooter>
