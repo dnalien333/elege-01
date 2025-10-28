@@ -99,7 +99,7 @@ export function KanbanView({ demands, onViewDetails }: KanbanViewProps) {
                       variant="outline"
                       size="sm"
                       className="w-full"
-                      disabled
+                      onClick={() => onViewDetails(demand)}
                     >
                       <Eye className="h-3 w-3 mr-2" />
                       Ver Detalhes

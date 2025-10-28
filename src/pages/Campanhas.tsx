@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Flag, Calendar } from "lucide-react";
 import { toast } from "sonner";
+import CampaignDetailsModal from "@/components/campanhas/CampaignDetailsModal";
 
 interface Campaign {
   id: string;
@@ -24,6 +25,7 @@ const Campanhas = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [viewingCampaign, setViewingCampaign] = useState<Campaign | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     candidate_name: "",
@@ -191,7 +193,7 @@ const Campanhas = () => {
                   <CardContent>
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                       <span>Ano: {campaign.election_year}</span>
-                      <Button variant="ghost" size="sm" disabled>
+                      <Button variant="ghost" size="sm" onClick={() => setViewingCampaign(campaign)}>
                         Ver Detalhes
                       </Button>
                     </div>
@@ -201,6 +203,13 @@ const Campanhas = () => {
             </div>
           )}
         </div>
+
+        {viewingCampaign && (
+          <CampaignDetailsModal
+            campaign={viewingCampaign}
+            onClose={() => setViewingCampaign(null)}
+          />
+        )}
       </main>
     </div>
   );

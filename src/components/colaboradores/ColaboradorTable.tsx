@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import ColaboradorDetailsModal from './ColaboradorDetailsModal';
 
 interface ColaboradorTableProps {
   colaboradores?: any[];
@@ -15,6 +16,7 @@ interface ColaboradorTableProps {
 export default function ColaboradorTable({ colaboradores, isLoading, onEdit, onDelete }: ColaboradorTableProps) {
   const [sortField, setSortField] = useState<string>('full_name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [viewingColaborador, setViewingColaborador] = useState<any>(null);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -113,7 +115,7 @@ export default function ColaboradorTable({ colaboradores, isLoading, onEdit, onD
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem disabled>
+                    <DropdownMenuItem onClick={() => setViewingColaborador(colaborador)}>
                       <Eye className="w-4 h-4 mr-2" />
                       Ver Detalhes
                     </DropdownMenuItem>
@@ -135,6 +137,13 @@ export default function ColaboradorTable({ colaboradores, isLoading, onEdit, onD
           ))}
         </TableBody>
       </Table>
+
+      {viewingColaborador && (
+        <ColaboradorDetailsModal
+          colaborador={viewingColaborador}
+          onClose={() => setViewingColaborador(null)}
+        />
+      )}
     </div>
   );
 }
