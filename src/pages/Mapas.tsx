@@ -22,6 +22,9 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
+//mock
+import { votacaoMock } from "../data/mocks/votacaoMock.js"
+
 type CoalitionSide = "left" | "right" | "center";
 
 type DemoResult = {
@@ -36,68 +39,36 @@ type DemoResult = {
   status: "Eleito" | "Suplente" | "Não eleito";
 };
 
-const demoResults: DemoResult[] = [
-  {
-    id: "sp-1",
-    city: "São Paulo",
-    state: "SP",
-    candidate: "Maria Andrade",
-    party: "PT",
-    votes: 154_230,
-    coalition: "left",
-    coordinates: [-23.55052, -46.633308],
-    status: "Eleito",
-  },
-  {
-    id: "rj-1",
-    city: "Rio de Janeiro",
-    state: "RJ",
-    candidate: "João Mendes",
-    party: "PL",
-    votes: 128_940,
-    coalition: "right",
-    coordinates: [-22.906847, -43.172897],
-    status: "Eleito",
-  },
-  {
-    id: "mg-1",
-    city: "Belo Horizonte",
-    state: "MG",
-    candidate: "Fernanda Costa",
-    party: "PSD",
-    votes: 98_210,
-    coalition: "center",
-    coordinates: [-19.916681, -43.934493],
-    status: "Suplente",
-  },
-  {
-    id: "ba-1",
-    city: "Salvador",
-    state: "BA",
-    candidate: "Carlos Santana",
-    party: "MDB",
-    votes: 86_500,
-    coalition: "center",
-    coordinates: [-12.977749, -38.50163],
-    status: "Não eleito",
-  },
-  {
-    id: "pr-1",
-    city: "Curitiba",
-    state: "PR",
-    candidate: "Ana Paula",
-    party: "PSDB",
-    votes: 74_320,
-    coalition: "right",
-    coordinates: [-25.428954, -49.273251],
-    status: "Suplente",
-  },
-];
+const demoResults: DemoResult[] = votacaoMock.map((item, index) => ({
+  id: `${item.SG_UF.toLowerCase()}-${item.NR_CANDIDATO}-${index}`,
+  city: item.NM_MUNICIPIO,
+  state: item.SG_UF,
+  candidate: item.NM_URNA_CANDIDATO,
+  party: item.SG_PARTIDO,
+  votes: item.QT_VOTOS_NOMINAIS,
+  coalition: item.COALITION as CoalitionSide,
+  coordinates: [item.LATITUDE, item.LONGITUDE],
+  status: item.QT_VOTOS_NOMINAIS > 5000
+  ? "Eleito"
+  : item.QT_VOTOS_NOMINAIS > 1000
+  ? "Suplente"
+  : "Não eleito",
+}));
 
-const coalitionColors: Record<CoalitionSide, string> = {
-  left: "#ef4444",
-  right: "#3b82f6",
-  center: "#9ca3af",
+
+const coalitionColors: Record<CoalitionSide | string, string> = {
+    left: "#ef4444",         // vermelho
+    right: "#3b82f6",        // azul
+    center: "#9ca3af",       // cinza
+  "center-left": "#f59e0b",    // laranja
+  "center-right": "#10b981",   // verde
+  "far-left": "#dc2626",       // vermelho escuro
+  "far-right": "#1e40af",      // azul escuro
+  "green": "#22c55e",          // verde claro
+  "liberal": "#8b5cf6",        // roxo
+  "conservative": "#0f172a",   // azul petróleo
+  "socialist": "#e11d48",      // rosa escuro
+  "progressive": "#6366f1",    // azul violeta
 };
 
 const statusColors: Record<DemoResult["status"], string> = {
@@ -170,11 +141,21 @@ const Mapas = () => {
               <CardContent className="space-y-3 text-sm text-muted-foreground">
                 <p>Cada ponto representa um município com dados da eleição simulada.</p>
                 <p>As cores indicam o espectro da coligação:</p>
-                <ul className="space-y-1 pl-4">
-                  <li className="list-disc text-rose-500">Esquerda</li>
-                  <li className="list-disc text-blue-500">Direita</li>
-                  <li className="list-disc text-gray-500">Centro</li>
-                </ul>
+
+                  <ul className="space-y-1 pl-4">
+                    <li className="list-disc" style={{ color: "#ef4444" }}>Esquerda</li>
+                    <li className="list-disc" style={{ color: "#3b82f6" }}>Direita</li>
+                    <li className="list-disc" style={{ color: "#9ca3af" }}>Centro</li>
+                    <li className="list-disc" style={{ color: "#f59e0b" }}>Centro-esquerda</li>
+                    <li className="list-disc" style={{ color: "#10b981" }}>Centro-direita</li>
+                    <li className="list-disc" style={{ color: "#dc2626" }}>Extrema esquerda</li>
+                    <li className="list-disc" style={{ color: "#1e40af" }}>Extrema direita</li>
+                    <li className="list-disc" style={{ color: "#22c55e" }}>Verde</li>
+                    <li className="list-disc" style={{ color: "#8b5cf6" }}>Liberal</li>
+                    <li className="list-disc" style={{ color: "#0f172a" }}>Conservador</li>
+                    <li className="list-disc" style={{ color: "#e11d48" }}>Socialista</li>
+                    <li className="list-disc" style={{ color: "#6366f1" }}>Progressista</li>
+                  </ul>
                 <p>O tamanho do marcador é fixo para manter a leitura simples no protótipo.</p>
               </CardContent>
             </Card>
