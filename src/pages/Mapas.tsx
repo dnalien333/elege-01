@@ -48,27 +48,23 @@ const demoResults: DemoResult[] = votacaoMock.map((item, index) => ({
   votes: item.QT_VOTOS_NOMINAIS,
   coalition: item.COALITION as CoalitionSide,
   coordinates: [item.LATITUDE, item.LONGITUDE],
-  status: item.QT_VOTOS_NOMINAIS > 5000
-  ? "Eleito"
-  : item.QT_VOTOS_NOMINAIS > 1000
-  ? "Suplente"
-  : "Não eleito",
+  status: item.DS_SIT_TOT_TURNO,
 }));
 
 
-const coalitionColors: Record<CoalitionSide | string, string> = {
-    left: "#ef4444",         // vermelho
-    right: "#3b82f6",        // azul
-    center: "#9ca3af",       // cinza
-  "center-left": "#f59e0b",    // laranja
-  "center-right": "#10b981",   // verde
-  "far-left": "#dc2626",       // vermelho escuro
-  "far-right": "#1e40af",      // azul escuro
-  "green": "#22c55e",          // verde claro
-  "liberal": "#8b5cf6",        // roxo
-  "conservative": "#0f172a",   // azul petróleo
-  "socialist": "#e11d48",      // rosa escuro
-  "progressive": "#6366f1",    // azul violeta
+const coalitionColors: Record<string, string> = {
+  left: "#ef4444",           // vermelho
+  right: "#3b82f6",          // azul
+  center: "#9ca3af",         // cinza
+  "center-left": "#d54630",  // laranja
+  "center-right": "#10b981", // verde
+  "far-left": "#dc2626",     // vermelho escuro
+  "far-right": "#1e40af",    // azul escuro
+  green: "#22c55e",          // verde claro
+  liberal: "#8b5cf6",        // roxo
+  conservative: "#0f172a",   // azul petróleo
+  socialist: "#e11d48",      // rosa escuro
+  progressive: "#6366f1",    // azul violeta
 };
 
 const statusColors: Record<DemoResult["status"], string> = {

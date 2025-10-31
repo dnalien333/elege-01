@@ -24,3 +24,5 @@ def get_coordinates(city: str, state: str = None, country: str = "Brazil"):
         return [lat, lon]
     else:
         return None
+
+
