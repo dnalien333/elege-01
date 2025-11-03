@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import { CircleMarker, Popup, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -8,13 +8,12 @@ import Sidebar from "@/components/layout/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import FilterControls from "@/components/Filters/FilterControls.tsx"
 
-// Ensure leaflet markers load correctly in bundlers
+// Corrige ícones padrão do Leaflet
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -22,10 +21,13 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-//mock
-import { votacaoMock } from "../data/mocks/votacaoMock.js"
+// Lazy load MapContainer
+const MapContainer = React.lazy(() =>
+  import("react-leaflet").then((m) => ({ default: m.MapContainer }))
+);
 
-type CoalitionSide = "left" | "right" | "center";
+// Tipos
+type CoalitionSide = "left" | "right" | "center" | "center-left" | "center-right";
 
 type DemoResult = {
   id: string;
@@ -37,7 +39,12 @@ type DemoResult = {
   coalition: CoalitionSide;
   coordinates: [number, number];
   status: "Eleito" | "Suplente" | "Não eleito";
+  voters: number;
+  percentage: number;
 };
+
+// Mock de dados
+import { votacaoMock } from "../data/mocks/votacaoMock.js";
 
 const demoResults: DemoResult[] = votacaoMock.map((item, index) => ({
   id: `${item.SG_UF.toLowerCase()}-${item.NR_CANDIDATO}-${index}`,
@@ -46,56 +53,96 @@ const demoResults: DemoResult[] = votacaoMock.map((item, index) => ({
   candidate: item.NM_URNA_CANDIDATO,
   party: item.SG_PARTIDO,
   votes: item.QT_VOTOS_NOMINAIS,
-  coalition: item.COALITION as CoalitionSide,
+  coalition: (item.COALITION || "center") as CoalitionSide,
   coordinates: [item.LATITUDE, item.LONGITUDE],
   status: item.DS_SIT_TOT_TURNO,
+  voters: item.QT_ELEITORES || 10000,
+  percentage: (item.QT_VOTOS_NOMINAIS / (item.QT_ELEITORES || 10000)) * 100,
 }));
 
-
-const coalitionColors: Record<string, string> = {
-  left: "#ef4444",           // vermelho
-  right: "#3b82f6",          // azul
-  center: "#9ca3af",         // cinza
-  "center-left": "#d54630",  // laranja
-  "center-right": "#10b981", // verde
-  "far-left": "#dc2626",     // vermelho escuro
-  "far-right": "#1e40af",    // azul escuro
-  green: "#22c55e",          // verde claro
-  liberal: "#8b5cf6",        // roxo
-  conservative: "#0f172a",   // azul petróleo
-  socialist: "#e11d48",      // rosa escuro
-  progressive: "#6366f1",    // azul violeta
+// Cores das coligações
+const coalitionColors: Record<CoalitionSide, string> = {
+  left: "#ef4444",
+  right: "#3b82f6",
+  center: "#9ca3af",
+  "center-left": "#d54630",
+  "center-right": "#10b981",
 };
 
+// Cores status
 const statusColors: Record<DemoResult["status"], string> = {
   Eleito: "bg-emerald-500 text-white",
   Suplente: "bg-amber-500 text-white",
   "Não eleito": "bg-slate-400 text-white",
 };
 
+// Define as cores de acordo com o espectro ideológico da coligação
+const getColorByCoalition = (coalition: string) => {
+  const colors: Record<string, string> = {
+    "left": "#ef4444",              // vermelho
+    "far-left": "#dc2626",          // vermelho escuro
+    "center-left": "#f5550b",       // laranja
+    "center": "#5b5d39",            // cinza
+    "center-right": "#45b910",      // verde
+    "right": "#3b82f6",             // azul
+    "far-right": "#1e40af",         // azul escuro
+    "green": "#22c55e",             // verde-claro
+    "liberal": "#8b5cf6",           // roxo
+    "conservative": "#0f172a",      // azul petróleo
+    "socialist": "#e11d48",         // rosa
+    "progressive": "#6366f1",       // roxo claro
+  };
+
+  // cor padrão (caso não encontre o espectro)
+  return colors[coalition?.toLowerCase()] || "#6b7280";
+};
+
 const Mapas = () => {
   const navigate = useNavigate();
   const [isMounted, setIsMounted] = useState(false);
 
+  // Filtros
+  const [filters, setFilters] = useState({
+    uf: "",
+    party: "",
+    status: "",
+    search: "",
+  });
+
+  const handleFilterChange = useCallback((newFilters: typeof filters) => {
+    setFilters(newFilters);
+  }, []);
+
+  // Verifica sessão
   useEffect(() => {
     setIsMounted(true);
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        navigate("/auth");
-      }
+      if (!session) navigate("/auth");
     });
   }, [navigate]);
 
-  const totals = useMemo(() => {
-    const totalVotes = demoResults.reduce((acc, result) => acc + result.votes, 0);
-    const winners = demoResults.filter((result) => result.status === "Eleito").length;
-    const suplentes = demoResults.filter((result) => result.status === "Suplente").length;
-    return { totalVotes, winners, suplentes };
-  }, []);
+  // Dados filtrados
+  const filteredResults = useMemo(() => {
+    return demoResults.filter((r) => {
+      const matchUF = filters.uf ? r.state === filters.uf : true;
+      const matchParty = filters.party ? r.party === filters.party : true;
+      const matchStatus = filters.status ? r.status === filters.status : true;
+      const matchSearch = filters.search
+        ? r.candidate.toLowerCase().includes(filters.search.toLowerCase())
+        : true;
+      return matchUF && matchParty && matchStatus && matchSearch;
+    });
+  }, [filters]);
 
-  if (!isMounted) {
-    return null;
-  }
+  // Totais para painel lateral
+  const totals = useMemo(() => {
+    const totalVotes = filteredResults.reduce((acc, r) => acc + r.votes, 0);
+    const winners = filteredResults.filter((r) => r.status === "Eleito").length;
+    const suplentes = filteredResults.filter((r) => r.status === "Suplente").length;
+    return { totalVotes, winners, suplentes };
+  }, [filteredResults]);
+
+  if (!isMounted) return null;
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -104,103 +151,130 @@ const Mapas = () => {
         <header className="space-y-2">
           <h1 className="text-3xl font-bold">Panorama Eleitoral</h1>
           <p className="text-muted-foreground">
-            Visualização simplificada dos principais resultados da última eleição municipal.
+            Visualização interativa dos resultados eleitorais simulados.
           </p>
         </header>
 
+        {/* Painel lateral e mapa */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          {/* Painel lateral */}
           <section className="xl:col-span-4 space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Resumo Rápido</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Total de votos analisados</span>
-                  <span className="text-xl font-semibold">{totals.totalVotes.toLocaleString("pt-BR")}</span>
+                <div className="flex justify-between text-sm">
+                  <span>Total de votos</span>
+                  <strong>{totals.totalVotes.toLocaleString("pt-BR")}</strong>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Candidatos eleitos</span>
-                  <span className="text-xl font-semibold">{totals.winners}</span>
+                <div className="flex justify-between text-sm">
+                  <span>Eleitos</span>
+                  <strong>{totals.winners}</strong>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Suplentes</span>
-                  <span className="text-xl font-semibold">{totals.suplentes}</span>
+                <div className="flex justify-between text-sm">
+                  <span>Suplentes</span>
+                  <strong>{totals.suplentes}</strong>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle>Como ler o mapa</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <p>Cada ponto representa um município com dados da eleição simulada.</p>
-                <p>As cores indicam o espectro da coligação:</p>
-
-                  <ul className="space-y-1 pl-4">
-                    <li className="list-disc" style={{ color: "#ef4444" }}>Esquerda</li>
-                    <li className="list-disc" style={{ color: "#3b82f6" }}>Direita</li>
-                    <li className="list-disc" style={{ color: "#9ca3af" }}>Centro</li>
-                    <li className="list-disc" style={{ color: "#f59e0b" }}>Centro-esquerda</li>
-                    <li className="list-disc" style={{ color: "#10b981" }}>Centro-direita</li>
-                    <li className="list-disc" style={{ color: "#dc2626" }}>Extrema esquerda</li>
-                    <li className="list-disc" style={{ color: "#1e40af" }}>Extrema direita</li>
-                    <li className="list-disc" style={{ color: "#22c55e" }}>Verde</li>
-                    <li className="list-disc" style={{ color: "#8b5cf6" }}>Liberal</li>
-                    <li className="list-disc" style={{ color: "#0f172a" }}>Conservador</li>
-                    <li className="list-disc" style={{ color: "#e11d48" }}>Socialista</li>
-                    <li className="list-disc" style={{ color: "#6366f1" }}>Progressista</li>
-                  </ul>
-                <p>O tamanho do marcador é fixo para manter a leitura simples no protótipo.</p>
-              </CardContent>
-            </Card>
+            <CardHeader>
+              <CardTitle>Como ler o mapa</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <p>Cada ponto representa um município com dados da eleição simulada.</p>
+              <p>As cores indicam o espectro da coligação:</p>
+              <ul className="space-y-1 pl-4">
+                <li className="list-disc" style={{ color: "#ef4444" }}>
+                  Esquerda (PT, PSOL, PC do B, REDE)
+                </li>
+                <li className="list-disc" style={{ color: "#d54630" }}>
+                  Centro-esquerda (PDT, PSB, Solidariedade)
+                </li>
+                <li className="list-disc" style={{ color: "#9ca3af" }}>
+                  Centro (MDB, PSD, AVANTE, CIDADANIA)
+                </li>
+                <li className="list-disc" style={{ color: "#10b981" }}>
+                  Centro-direita (UNIÃO, PODE, PP, PRD)
+                </li>
+                <li className="list-disc" style={{ color: "#3b82f6" }}>
+                  Direita (PL, NOVO, PRTB)
+                </li>
+            </ul>
+              <p>O tamanho do marcador é fixo para manter a leitura simples no protótipo.</p>
+            </CardContent>
+          </Card>
           </section>
 
-          <section className="xl:col-span-8">
-            <Card className="h-[600px]">
+          {/* Mapa */}
+          <section className="xl:col-span-8 space-y-4">
+            {/* Filtros */}
+            <FilterControls
+              ufs={[...new Set(demoResults.map((r) => r.state))].sort()}
+              parties={[...new Set(demoResults.map((r) => r.party))].sort()}
+              statuses={[...new Set(demoResults.map((r) => r.status))]}
+              onFilterChange={handleFilterChange}
+            />
+
+            {/* Mapa */}
+            <Card className="h-[calc(100vh-180px)]">
               <CardHeader>
                 <CardTitle>Mapa Interativo</CardTitle>
               </CardHeader>
               <CardContent className="h-full">
-                <MapContainer
-                  center={[-15.77972, -47.92972]}
-                  zoom={4}
-                  className="h-full rounded-md"
-                  scrollWheelZoom
-                >
-                  <TileLayer
-                    attribution="&copy; OpenStreetMap contributors"
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  {demoResults.map((result) => (
+                <Suspense fallback={<p>Carregando mapa...</p>}>
+                  <MapContainer
+                    center={[-14.235, -51.925]}
+                    zoom={5}
+                    scrollWheelZoom
+                    className="h-full rounded-md"
+                  >
+                    <TileLayer
+                      attribution="&copy; OpenStreetMap contributors"
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                  {filteredResults.map((result) => (
                     <CircleMarker
                       key={result.id}
                       center={result.coordinates}
-                      radius={14}
+                      radius={10}
                       pathOptions={{
-                        color: "#ffffff",
+                        color: "#fff",
                         weight: 1,
-                        fillColor: coalitionColors[result.coalition],
-                        fillOpacity: 0.85,
+                        fillColor: getColorByCoalition(result.coalition),
+                        fillOpacity: 0.9,
                       }}
                     >
-                      <Popup>
-                        <div className="space-y-1">
-                          <p className="font-semibold">{result.candidate}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {result.city} / {result.state}
-                          </p>
-                          <p className="text-sm">Partido: {result.party}</p>
-                          <p className="text-sm font-medium">
-                            {result.votes.toLocaleString("pt-BR")} votos
-                          </p>
-                          <Badge className={statusColors[result.status]}>{result.status}</Badge>
-                        </div>
-                      </Popup>
-                    </CircleMarker>
-                  ))}
-                </MapContainer>
+                        <Popup>
+                          <div className="space-y-1">
+                            <p className="font-semibold">
+                              {result.city} / {result.state}
+                            </p>
+                            <p className="text-sm">{result.candidate} ({result.party})</p>
+                            <p className="text-sm">{result.votes.toLocaleString("pt-BR")} votos</p>
+                            <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-green-500"
+                                style={{ width: `${result.percentage}%` }}
+                              />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {result.percentage.toFixed(1)}% dos votos válidos
+                            </p>
+                            <Badge className={statusColors[result.status]}>
+                              {result.status}
+                            </Badge>
+                            <p className="text-xs text-muted-foreground">
+                              {result.voters.toLocaleString()} eleitores
+                            </p>
+                          </div>
+                        </Popup>
+                      </CircleMarker>
+                    ))}
+                  </MapContainer>
+                </Suspense>
               </CardContent>
             </Card>
           </section>
