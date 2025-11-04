@@ -97,6 +97,40 @@ const getColorByCoalition = (coalition: string) => {
   return colors[coalition?.toLowerCase()] || "#6b7280";
 };
 
+
+// Função que aplica deslocamento para evitar sobreposição
+const applyJitterToCoordinates = (results: DemoResult[]): DemoResult[] => {
+  const coordGroups: Record<string, DemoResult[]> = {};
+
+  // Agrupa por coordenada
+  results.forEach((r) => {
+    const key = `${r.coordinates[0]},${r.coordinates[1]}`;
+    if (!coordGroups[key]) coordGroups[key] = [];
+    coordGroups[key].push(r);
+  });
+
+  // Cria novo array com deslocamentos
+  const adjustedResults: DemoResult[] = [];
+
+  Object.values(coordGroups).forEach((group) => {
+    if (group.length === 1) {
+      adjustedResults.push(group[0]);
+    } else {
+      const angleStep = (2 * Math.PI) / group.length;
+      const radius = 0.05; // quanto maior, mais afastados os pontos (ajuste se precisar)
+
+      group.forEach((r, i) => {
+        const [lat, lng] = r.coordinates;
+        const jitteredLat = lat + radius * Math.cos(i * angleStep);
+        const jitteredLng = lng + radius * Math.sin(i * angleStep);
+        adjustedResults.push({ ...r, coordinates: [jitteredLat, jitteredLng] });
+      });
+    }
+  });
+
+  return adjustedResults;
+};
+
 const Mapas = () => {
   const navigate = useNavigate();
   const [isMounted, setIsMounted] = useState(false);
@@ -122,17 +156,20 @@ const Mapas = () => {
   }, [navigate]);
 
   // Dados filtrados
-  const filteredResults = useMemo(() => {
-    return demoResults.filter((r) => {
-      const matchUF = filters.uf ? r.state === filters.uf : true;
-      const matchParty = filters.party ? r.party === filters.party : true;
-      const matchStatus = filters.status ? r.status === filters.status : true;
-      const matchSearch = filters.search
-        ? r.candidate.toLowerCase().includes(filters.search.toLowerCase())
-        : true;
-      return matchUF && matchParty && matchStatus && matchSearch;
-    });
-  }, [filters]);
+const filteredResults = useMemo(() => {
+  const baseFiltered = demoResults.filter((r) => {
+    const matchUF = filters.uf ? r.state === filters.uf : true;
+    const matchParty = filters.party ? r.party === filters.party : true;
+    const matchStatus = filters.status ? r.status === filters.status : true;
+    const matchSearch = filters.search
+      ? r.candidate.toLowerCase().includes(filters.search.toLowerCase())
+      : true;
+    return matchUF && matchParty && matchStatus && matchSearch;
+  });
+
+  return applyJitterToCoordinates(baseFiltered);
+}, [filters]);
+
 
   // Totais para painel lateral
   const totals = useMemo(() => {

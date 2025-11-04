@@ -45,15 +45,23 @@ export const FilterControls = ({
     setSearch("");
   };
 
+  // 🧠 Helper que trata "Todas" como reset automático
+  const handleSelectChange = (
+    setter: React.Dispatch<React.SetStateAction<string>>
+  ) => (value: string) => {
+    if (value === "all") setter("");
+    else setter(value);
+  };
+
   return (
     <div className="flex flex-col gap-3 md:flex-row md:items-end">
+      {/* UF */}
       <div className="flex-1">
         <label className="text-sm font-medium">UF</label>
-        <Select value={uf} onValueChange={setUf}>
+        <Select value={uf} onValueChange={handleSelectChange(setUf)}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Todas" />
           </SelectTrigger>
-          {/* 👇 Apenas estilização ajustada */}
           <SelectContent className="z-[9999]" position="popper">
             <SelectItem value="all">Todas</SelectItem>
             {ufs.map((uf) => (
@@ -65,13 +73,13 @@ export const FilterControls = ({
         </Select>
       </div>
 
+      {/* Partido */}
       <div className="flex-1">
         <label className="text-sm font-medium">Partido</label>
-        <Select value={party} onValueChange={setParty}>
+        <Select value={party} onValueChange={handleSelectChange(setParty)}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Todos" />
           </SelectTrigger>
-          {/* 👇 Apenas estilização ajustada */}
           <SelectContent className="z-[9999]" position="popper">
             <SelectItem value="all">Todos</SelectItem>
             {parties.map((p) => (
@@ -83,13 +91,13 @@ export const FilterControls = ({
         </Select>
       </div>
 
+      {/* Status */}
       <div className="flex-1">
         <label className="text-sm font-medium">Status</label>
-        <Select value={status} onValueChange={setStatus}>
+        <Select value={status} onValueChange={handleSelectChange(setStatus)}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Todos" />
           </SelectTrigger>
-          {/* 👇 Apenas estilização ajustada */}
           <SelectContent className="z-[9999]" position="popper">
             <SelectItem value="all">Todos</SelectItem>
             {statuses.map((s) => (
@@ -101,6 +109,7 @@ export const FilterControls = ({
         </Select>
       </div>
 
+      {/* Buscar */}
       <div className="flex-1">
         <label className="text-sm font-medium">Buscar candidato</label>
         <Input
