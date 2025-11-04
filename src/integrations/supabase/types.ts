@@ -87,7 +87,7 @@ export type Database = {
           entity_id: string | null
           entity_type: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           user_id: string | null
         }
         Insert: {
@@ -98,7 +98,7 @@ export type Database = {
           entity_id?: string | null
           entity_type?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_id?: string | null
         }
         Update: {
@@ -109,7 +109,7 @@ export type Database = {
           entity_id?: string | null
           entity_type?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_id?: string | null
         }
         Relationships: [
@@ -534,7 +534,6 @@ export type Database = {
           tags: string[] | null
           title: string
           updated_at: string | null
-          urgency: Database["public"]["Enums"]["demand_urgency"]
           voter_id: string | null
         }
         Insert: {
@@ -557,7 +556,6 @@ export type Database = {
           tags?: string[] | null
           title: string
           updated_at?: string | null
-          urgency?: Database["public"]["Enums"]["demand_urgency"]
           voter_id?: string | null
         }
         Update: {
@@ -580,7 +578,6 @@ export type Database = {
           tags?: string[] | null
           title?: string
           updated_at?: string | null
-          urgency?: Database["public"]["Enums"]["demand_urgency"]
           voter_id?: string | null
         }
         Relationships: [
@@ -620,7 +617,7 @@ export type Database = {
           consent_version: string
           consented_at: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           user_agent: string | null
           user_id: string | null
         }
@@ -629,7 +626,7 @@ export type Database = {
           consent_version?: string
           consented_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
           user_id?: string | null
         }
@@ -638,7 +635,7 @@ export type Database = {
           consent_version?: string
           consented_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           user_agent?: string | null
           user_id?: string | null
         }
@@ -1120,7 +1117,6 @@ export type Database = {
         | "awaiting_response"
         | "completed"
         | "archived"
-      demand_urgency: "low" | "medium" | "high" | "critical"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1267,7 +1263,6 @@ export const Constants = {
         "completed",
         "archived",
       ],
-      demand_urgency: ["low", "medium", "high", "critical"],
     },
   },
 } as const

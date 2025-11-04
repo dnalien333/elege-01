@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Loader2, Users, AlertCircle, Download, Upload, MoreVertical, Edit, Trash2, Eye } from "lucide-react";
 import { exportToCSV } from "@/lib/csvUtils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import VoterDetailsModal from "./VoterDetailsModal";
 
 interface VoterTableProps {
   filters: any;
@@ -25,6 +26,7 @@ export default function VoterTable({ filters, page = 1, onEdit, onDelete, onImpo
   const [selectedVoters, setSelectedVoters] = useState<string[]>([]);
   const [sortField, setSortField] = useState<string>('full_name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [viewingVoter, setViewingVoter] = useState<any>(null);
   const queryClient = useQueryClient();
 
   const handleSort = (field: string) => {
@@ -249,7 +251,7 @@ export default function VoterTable({ filters, page = 1, onEdit, onDelete, onImpo
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEdit(voter)}>
+                      <DropdownMenuItem onClick={() => setViewingVoter(voter)}>
                         <Eye className="w-4 h-4 mr-2" />
                         Ver Detalhes
                       </DropdownMenuItem>
@@ -286,6 +288,13 @@ export default function VoterTable({ filters, page = 1, onEdit, onDelete, onImpo
             Exportar Selecionados
           </Button>
         </div>
+      )}
+
+      {viewingVoter && (
+        <VoterDetailsModal
+          voter={viewingVoter}
+          onClose={() => setViewingVoter(null)}
+        />
       )}
     </div>
   );

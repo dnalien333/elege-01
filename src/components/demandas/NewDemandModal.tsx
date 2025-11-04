@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { Calendar as CalendarIcon } from "lucide-react";
 
 type NewDemandModalProps = {
   open: boolean;
@@ -34,9 +35,9 @@ export function NewDemandModal({ open, onOpenChange, campaignId }: NewDemandModa
     description: "",
     channel: "whatsapp" as const,
     priority: "medium" as const,
-    urgency: "medium" as const,
     voter_id: "",
     assigned_to: "",
+    deadline: "",
   });
 
   // Fetch voters
@@ -78,6 +79,12 @@ export function NewDemandModal({ open, onOpenChange, campaignId }: NewDemandModa
       return;
     }
 
+    // Validate all required fields
+    if (!formData.title || !formData.voter_id || !formData.assigned_to || !formData.deadline) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -85,7 +92,13 @@ export function NewDemandModal({ open, onOpenChange, campaignId }: NewDemandModa
       if (!user) throw new Error("Usuário não autenticado");
 
       const { error } = await supabase.from("demands").insert({
-        ...formData,
+        title: formData.title,
+        description: formData.description,
+        channel: formData.channel,
+        priority: formData.priority,
+        voter_id: formData.voter_id,
+        assigned_to: formData.assigned_to,
+        deadline: formData.deadline,
         campaign_id: campaignId,
         created_by: user.id,
         status: "unassigned",
@@ -101,9 +114,9 @@ export function NewDemandModal({ open, onOpenChange, campaignId }: NewDemandModa
         description: "",
         channel: "whatsapp",
         priority: "medium",
-        urgency: "medium",
         voter_id: "",
         assigned_to: "",
+        deadline: "",
       });
     } catch (error) {
       console.error("Error creating demand:", error);
@@ -112,6 +125,8 @@ export function NewDemandModal({ open, onOpenChange, campaignId }: NewDemandModa
       setIsSubmitting(false);
     }
   };
+
+  const isFormValid = formData.title && formData.voter_id && formData.assigned_to && formData.deadline;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -231,21 +246,17 @@ export function NewDemandModal({ open, onOpenChange, campaignId }: NewDemandModa
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="urgency">Urgência *</Label>
-              <Select
-                value={formData.urgency}
-                onValueChange={(value: any) => setFormData({ ...formData, urgency: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">🟢 Baixa</SelectItem>
-                  <SelectItem value="medium">🔵 Média</SelectItem>
-                  <SelectItem value="high">🟠 Alta</SelectItem>
-                  <SelectItem value="critical">🔴 Crítica</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="deadline" className="flex items-center gap-2">
+                <CalendarIcon className="h-4 w-4" />
+                Data/Hora do Agendamento *
+              </Label>
+              <Input
+                id="deadline"
+                type="datetime-local"
+                value={formData.deadline}
+                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                required
+              />
             </div>
           </div>
 
@@ -253,7 +264,7 @@ export function NewDemandModal({ open, onOpenChange, campaignId }: NewDemandModa
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || !isFormValid}>
               {isSubmitting ? "Criando..." : "Criar Demanda"}
             </Button>
           </div>

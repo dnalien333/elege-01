@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Sidebar from "@/components/layout/Sidebar";
@@ -35,7 +35,7 @@ import {
   Eye,
   Edit,
   UserPlus,
-  Calendar,
+  Calendar as CalendarIcon,
   Trash2,
   LayoutGrid,
   List,
@@ -45,6 +45,10 @@ import {
   ClipboardList,
   Download
 } from "lucide-react";
+import { Calendar, momentLocalizer, Event } from "react-big-calendar";
+import moment from "moment";
+import "moment/locale/pt-br";
+import "react-big-calendar/lib/css/react-big-calendar.css";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,6 +65,9 @@ import { AssignDemandModal } from "@/components/demandas/AssignDemandModal";
 import { KanbanView } from "@/components/demandas/KanbanView";
 import { exportToCSV } from "@/lib/csvUtils";
 
+moment.locale("pt-br");
+const localizer = momentLocalizer(moment);
+
 type Demand = {
   id: string;
   title: string;
@@ -68,7 +75,6 @@ type Demand = {
   channel: string;
   status: string;
   priority: string;
-  urgency: string;
   deadline: string | null;
   created_at: string;
   campaign_id: string;
@@ -82,8 +88,14 @@ type Demand = {
 export default function Demandas() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [isMounted, setIsMounted] = useState(false);
-  const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
+  
+  // Check URL params for initial view mode
+  const initialView = searchParams.get("view");
+  const [viewMode, setViewMode] = useState<"table" | "kanban" | "calendar">(
+    initialView === "calendar" ? "calendar" : "table"
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -264,7 +276,7 @@ export default function Demandas() {
   };
 
   const handleExport = () => {
-    const headers = ["ID", "Eleitor", "Título", "Descrição", "Canal", "Status", "Prioridade", "Urgência", "Responsável", "Prazo", "Criado em", "Tags"];
+    const headers = ["ID", "Eleitor", "Título", "Descrição", "Canal", "Status", "Prioridade", "Responsável", "Prazo", "Criado em", "Tags"];
     
     const exportData = filteredDemands.map(demand => ({
       ID: demand.id.slice(0, 8),
@@ -274,7 +286,6 @@ export default function Demandas() {
       Canal: demand.channel,
       Status: demand.status,
       Prioridade: demand.priority,
-      Urgência: demand.urgency,
       Responsável: demand.profiles?.full_name || "Não atribuído",
       Prazo: demand.deadline ? format(new Date(demand.deadline), "dd/MM/yyyy", { locale: ptBR }) : "",
       "Criado em": format(new Date(demand.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
@@ -283,6 +294,38 @@ export default function Demandas() {
 
     exportToCSV(exportData, `demandas_${format(new Date(), "yyyy-MM-dd")}.csv`, headers);
     toast.success("Demandas exportadas com sucesso!");
+  };
+
+  // Convert demands to calendar events
+  const calendarEvents: Event[] = useMemo(() => {
+    return filteredDemands
+      .filter(d => d.deadline)
+      .map(d => ({
+        title: d.title,
+        start: new Date(d.deadline!),
+        end: new Date(d.deadline!),
+        resource: d,
+      }));
+  }, [filteredDemands]);
+
+  const eventStyleGetter = (event: Event) => {
+    const demand = event.resource as Demand;
+    let backgroundColor = "#94a3b8"; // default gray
+    
+    if (demand.status === "pending") backgroundColor = "#eab308"; // yellow
+    else if (demand.status === "in_progress") backgroundColor = "#3b82f6"; // blue
+    else if (demand.status === "completed") backgroundColor = "#22c55e"; // green
+    
+    return {
+      style: {
+        backgroundColor,
+        borderRadius: "4px",
+        opacity: 0.8,
+        color: "white",
+        border: "none",
+        display: "block",
+      },
+    };
   };
 
   if (!isMounted) {
@@ -310,6 +353,7 @@ export default function Demandas() {
                   variant={viewMode === "table" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setViewMode("table")}
+                  title="Lista"
                 >
                   <List className="h-4 w-4" />
                 </Button>
@@ -317,8 +361,17 @@ export default function Demandas() {
                   variant={viewMode === "kanban" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setViewMode("kanban")}
+                  title="Kanban"
                 >
                   <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "calendar" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("calendar")}
+                  title="Calendário"
+                >
+                  <CalendarIcon className="h-4 w-4" />
                 </Button>
               </div>
               <Button variant="outline" onClick={handleExport}>
@@ -427,6 +480,32 @@ export default function Demandas() {
                 ))}
               </div>
             </Card>
+          ) : viewMode === "calendar" ? (
+            <Card className="p-6">
+              <div style={{ height: "700px" }}>
+                <Calendar
+                  localizer={localizer}
+                  events={calendarEvents}
+                  startAccessor="start"
+                  endAccessor="end"
+                  onSelectEvent={(event) => handleViewDetails(event.resource)}
+                  eventPropGetter={eventStyleGetter}
+                  messages={{
+                    next: "Próximo",
+                    previous: "Anterior",
+                    today: "Hoje",
+                    month: "Mês",
+                    week: "Semana",
+                    day: "Dia",
+                    agenda: "Agenda",
+                    date: "Data",
+                    time: "Hora",
+                    event: "Evento",
+                    noEventsInRange: "Nenhuma demanda neste período",
+                  }}
+                />
+              </div>
+            </Card>
           ) : viewMode === "kanban" ? (
             <KanbanView demands={filteredDemands} onViewDetails={handleViewDetails} />
           ) : (
@@ -479,7 +558,12 @@ export default function Demandas() {
                         </div>
                       </TableCell>
                       <TableCell className="max-w-[300px]">
-                        <div className="truncate">{demand.title}</div>
+                        <div className="flex items-center gap-2">
+                          {demand.deadline && (
+                            <CalendarIcon className="h-4 w-4 text-primary" />
+                          )}
+                          <div className="truncate">{demand.title}</div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge className={getChannelBadge(demand.channel)}>

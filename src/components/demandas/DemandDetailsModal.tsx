@@ -17,7 +17,6 @@ type Demand = {
   channel: string;
   status: string;
   priority: string;
-  urgency: string;
   deadline: string | null;
   created_at: string;
   assigned_to: string | null;
@@ -45,7 +44,7 @@ export function DemandDetailsModal({ open, onOpenChange, demand }: DemandDetails
           <div>
             <h3 className="text-xl font-semibold mb-4">{demand.title}</h3>
             
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Canal</p>
                 <Badge>{demand.channel}</Badge>
@@ -53,10 +52,6 @@ export function DemandDetailsModal({ open, onOpenChange, demand }: DemandDetails
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Prioridade</p>
                 <Badge>{demand.priority}</Badge>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Urgência</p>
-                <Badge>{demand.urgency}</Badge>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Status</p>

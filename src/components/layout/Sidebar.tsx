@@ -35,8 +35,11 @@ const Sidebar = () => {
     { to: "/demandas", icon: ClipboardList, label: "Demandas" },
     { to: "/mapas", icon: Map, label: "Mapas" },
     { to: "/comunicacao", icon: MessageSquare, label: "Comunicação" },
+    { to: "/metas", icon: Vote, label: "Metas" },
     { to: "/assistente", icon: Bot, label: "Assistente IA" },
     { to: "/gestao-equipe", icon: Flag, label: "Gestão de Equipe" },
+    { to: "/relatorios", icon: LayoutDashboard, label: "Relatórios" },
+    { to: "/financeiro", icon: LayoutDashboard, label: "Financeiro" },
   ];
 
   return (
