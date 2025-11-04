@@ -1,70 +1,88 @@
 import pandas as pd
-import os
 import json
+import math
+import os
 
-csv_path = r"C:\Repo\elege-01\src\data\votacoes2024\votacao_candidato_munzona_2024_BRASIL.csv"
-
-df = pd.read_csv(csv_path, sep=";", encoding="latin1", dtype=str)
-
-df["QT_VOTOS_NOMINAIS"] = pd.to_numeric(df["QT_VOTOS_NOMINAIS"], errors="coerce").fillna(0).astype(int)
-
-linhas_antes = len(df)
-
-min_percent = 0.20
-
-totais_municipio = df.groupby("NM_MUNICIPIO")["QT_VOTOS_NOMINAIS"].sum().rename("TOTAL_VOTOS_MUNICIPIO")
-
-df = df.merge(totais_municipio, on="NM_MUNICIPIO", how="left")
-
-# Participação percentual de cada candidato
-df["PERCENTUAL_VOTOS"] = df["QT_VOTOS_NOMINAIS"] / df["TOTAL_VOTOS_MUNICIPIO"]
-
-# Filtra candidatos relevantes
-df_limpo = df[df["PERCENTUAL_VOTOS"] >= min_percent].copy()
-
-# Corrige LATITUDE e LONGITUDE para formato decimal
-def fix_coordinate(coord):
-    if pd.isna(coord):
-        return None
-    coord = str(coord).replace('.', '', 1).replace('.', '')
-    try:
-        return float(coord) / 1000000
-    except:
-        return None
-
-df_limpo["LATITUDE"] = df_limpo["LATITUDE"].apply(fix_coordinate)
-df_limpo["LONGITUDE"] = df_limpo["LONGITUDE"].apply(fix_coordinate)
-
-# Filtra coordenadas dentro dos limites do Brasil
-df_limpo = df_limpo[
-    df_limpo["LATITUDE"].between(-33.75, 5.27) &
-    df_limpo["LONGITUDE"].between(-73.99, -34.79)
-].copy()
-
-df_limpo.drop(columns=["TOTAL_VOTOS_MUNICIPIO", "PERCENTUAL_VOTOS"], inplace=True)
-df_limpo.to_csv(csv_path, sep=";", index=False, encoding="latin1")
-
-print("\n✅ Limpeza concluída com sucesso!")
-print(f"💾 Arquivo atualizado: {csv_path}")
+# Caminho do CSV de origem
+caminho_csv = r"C:\Repo\elege-01\src\data\votacoes2024\votacao_candidato_munzona_2024_BRASIL.csv"
 
 # Caminho do arquivo JS de saída
-output_path = r"C:\Repo\elege-01\src\data\mocks\votacaoMock.js"
+nome_arquivo_saida = "mockElectionData.js"
+caminho_saida = os.path.join(r"C:\Repo\elege-01\src\data\mocks", nome_arquivo_saida)
 
-# Converter colunas float que são inteiras
-for col in df_limpo.columns:
-    if df_limpo[col].dtype == float and (df_limpo[col] % 20 == 0).all():
-        df_limpo[col] = df_limpo[col].astype(int)
+# Ler CSV
+df = pd.read_csv(caminho_csv, sep=';', encoding='utf-8')
+df.columns = df.columns.str.strip()
 
-# Converter para lista de dicionários
-mock_data = df_limpo.to_dict(orient='records')
+# Converter LATITUDE e LONGITUDE para float
+def converter_float(val):
+    try:
+        return float(str(val).replace(',', '.'))
+    except:
+        return float('nan')
 
-# Criar a pasta caso não exista
-os.makedirs(os.path.dirname(output_path), exist_ok=True)
+df['LATITUDE'] = df['LATITUDE'].apply(converter_float)
+df['LONGITUDE'] = df['LONGITUDE'].apply(converter_float)
 
-# Salvar o mock em formato JS 
-with open(output_path, "w", encoding="utf-8") as f:
-    f.write("export const votacaoMock = ")
-    json.dump(mock_data, f, ensure_ascii=False, indent=2)
+# Listas únicas de candidatos e partidos
+candidates = sorted(df['NM_URNA_CANDIDATO'].dropna().unique())
+parties = sorted(df['SG_PARTIDO'].dropna().unique())
 
-print(f"✅ Mock gerado com sucesso em: {output_path}")
-print(f"🧩 Registros exportados: {len(mock_data)}")
+# Agrupar dados por município
+municipalities = []
+
+for (uf, municipio), group in df.groupby(['SG_UF', 'NM_MUNICIPIO']):
+    # ID do município: pode ser a soma dos códigos das zonas ou criar um hash simples
+    id_mun = str(abs(hash(f"{uf}_{municipio}")) % 10**8)  # 8 dígitos
+    
+    latitude = group['LATITUDE'].iloc[0] if not math.isnan(group['LATITUDE'].iloc[0]) else 0
+    longitude = group['LONGITUDE'].iloc[0] if not math.isnan(group['LONGITUDE'].iloc[0]) else 0
+    
+    total_voters = group['QT_VOTOS_NOMINAIS_VALIDOS'].sum()
+    
+    votes = []
+    for (cand, party, turno), vote_group in group.groupby(['NM_URNA_CANDIDATO', 'SG_PARTIDO', 'NR_TURNO']):
+        total_votes = vote_group['QT_VOTOS_NOMINAIS'].sum()
+        percentage = round((total_votes / total_voters) * 100, 2) if total_voters > 0 else 0
+        votes.append({
+            "candidate": cand,
+            "party": party,
+            "turno": int(turno),
+            "totalVotes": int(total_votes),
+            "percentage": percentage
+        })
+    
+    municipality_item = {
+        "id": id_mun,
+        "name": municipio,
+        "state": uf,
+        "coordinates": [latitude, longitude],
+        "votes": votes,
+        "totalVoters": int(total_voters)
+    }
+    
+    municipalities.append(municipality_item)
+
+# Gerar conteúdo do arquivo JS
+js_content = ""
+
+# candidates
+js_content += "export const candidates = [\n"
+js_content += ",\n".join([f'  "{c}"' for c in candidates])
+js_content += "\n];\n\n"
+
+# parties
+js_content += "export const parties = ["
+js_content += ", ".join([f'"{p}"' for p in parties])
+js_content += "];\n\n"
+
+# mockElectionData
+js_content += "export const mockElectionData: MunicipalityData[] = "
+js_content += json.dumps(municipalities, ensure_ascii=False, indent=2)
+js_content += ";\n"
+
+# Salvar arquivo
+with open(caminho_saida, 'w', encoding='utf-8') as f:
+    f.write(js_content)
+
+print("Arquivo gerado em:", caminho_saida)
