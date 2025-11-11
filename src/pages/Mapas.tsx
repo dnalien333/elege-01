@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import { CircleMarker, Popup, TileLayer } from "react-leaflet";
+import { CircleMarker, Popup, TileLayer, ZoomControl } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -277,8 +277,10 @@ const filteredResults = useMemo(() => {
                     center={[-14.235, -51.925]}
                     zoom={5}
                     scrollWheelZoom
+                    zoomControl={false}
                     className="h-full rounded-md"
                   >
+                    <ZoomControl position="topright" />
                     <TileLayer
                       attribution="&copy; OpenStreetMap contributors"
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
