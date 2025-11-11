@@ -155,7 +155,7 @@ const Mapas = () => {
     });
   }, [navigate]);
 
-  // Dados filtrados
+  // Dados filtrados 
 const filteredResults = useMemo(() => {
   const baseFiltered = demoResults.filter((r) => {
     const matchUF = filters.uf ? r.state === filters.uf : true;
@@ -192,9 +192,7 @@ const filteredResults = useMemo(() => {
           </p>
         </header>
 
-        {/* Painel lateral e mapa */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          {/* Painel lateral */}
           <section className="xl:col-span-4 space-y-4">
             <Card>
               <CardHeader>
