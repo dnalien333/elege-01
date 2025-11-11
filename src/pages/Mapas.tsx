@@ -197,22 +197,22 @@ const filteredResults = useMemo(() => {
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
           <section className="xl:col-span-4 space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Resumo Rápido</CardTitle>
+            <Card className="border-border/50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Resumo Rápido</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span>Total de votos</span>
-                  <strong>{totals.totalVotes.toLocaleString("pt-BR")}</strong>
+              <CardContent className="space-y-2 pt-0">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Total de votos</span>
+                  <strong className="text-foreground">{totals.totalVotes.toLocaleString("pt-BR")}</strong>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span>Eleitos</span>
-                  <strong>{totals.winners}</strong>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Eleitos</span>
+                  <strong className="text-foreground">{totals.winners}</strong>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span>Suplentes</span>
-                  <strong>{totals.suplentes}</strong>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Suplentes</span>
+                  <strong className="text-foreground">{totals.suplentes}</strong>
                 </div>
               </CardContent>
             </Card>
