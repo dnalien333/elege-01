@@ -9,6 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import FilterControls from "@/components/Filters/FilterControls.tsx"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
+import { ChevronDown } from "lucide-react";
 
 // Corrige ícones padrão do Leaflet
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -215,32 +218,42 @@ const filteredResults = useMemo(() => {
             </Card>
 
             <Card>
-            <CardHeader>
-              <CardTitle>Como ler o mapa</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <p>Cada ponto representa um município com dados da eleição simulada.</p>
-              <p>As cores indicam o espectro da coligação:</p>
-              <ul className="space-y-1 pl-4">
-                <li className="list-disc" style={{ color: "#ef4444" }}>
-                  Esquerda (PT, PSOL, PC do B, REDE)
-                </li>
-                <li className="list-disc" style={{ color: "#d54630" }}>
-                  Centro-esquerda (PDT, PSB, Solidariedade)
-                </li>
-                <li className="list-disc" style={{ color: "#9ca3af" }}>
-                  Centro (MDB, PSD, AVANTE, CIDADANIA)
-                </li>
-                <li className="list-disc" style={{ color: "#10b981" }}>
-                  Centro-direita (UNIÃO, PODE, PP, PRD)
-                </li>
-                <li className="list-disc" style={{ color: "#3b82f6" }}>
-                  Direita (PL, NOVO, PRTB)
-                </li>
-            </ul>
-              <p>O tamanho do marcador é fixo para manter a leitura simples no protótipo.</p>
-            </CardContent>
-          </Card>
+              <Collapsible defaultOpen={false}>
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-between p-6 hover:bg-accent/50"
+                  >
+                    <CardTitle className="text-lg">Como ler o mapa</CardTitle>
+                    <ChevronDown className="h-5 w-5 transition-transform duration-200 data-[state=open]:rotate-180" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="space-y-3 text-sm text-muted-foreground pt-0">
+                    <p>Cada ponto representa um município com dados da eleição simulada.</p>
+                    <p>As cores indicam o espectro da coligação:</p>
+                    <ul className="space-y-1 pl-4">
+                      <li className="list-disc" style={{ color: "#ef4444" }}>
+                        Esquerda (PT, PSOL, PC do B, REDE)
+                      </li>
+                      <li className="list-disc" style={{ color: "#d54630" }}>
+                        Centro-esquerda (PDT, PSB, Solidariedade)
+                      </li>
+                      <li className="list-disc" style={{ color: "#9ca3af" }}>
+                        Centro (MDB, PSD, AVANTE, CIDADANIA)
+                      </li>
+                      <li className="list-disc" style={{ color: "#10b981" }}>
+                        Centro-direita (UNIÃO, PODE, PP, PRD)
+                      </li>
+                      <li className="list-disc" style={{ color: "#3b82f6" }}>
+                        Direita (PL, NOVO, PRTB)
+                      </li>
+                    </ul>
+                    <p>O tamanho do marcador é fixo para manter a leitura simples no protótipo.</p>
+                  </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
+            </Card>
           </section>
 
           {/* Mapa */}
