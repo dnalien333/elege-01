@@ -187,7 +187,7 @@ const filteredResults = useMemo(() => {
   return (
     <div className="flex min-h-screen w-full bg-background">
       <Sidebar />
-      <main className="flex-1 w-full p-6 lg:p-8 space-y-6 overflow-y-auto">
+      <main className="flex-1 w-full p-6 lg:p-8 space-y-6">
         <header className="space-y-2">
           <h1 className="text-3xl font-bold">Panorama Eleitoral</h1>
           <p className="text-muted-foreground">
