@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import { CircleMarker, Popup, TileLayer, ZoomControl } from "react-leaflet";
+import { CircleMarker, Popup, TileLayer, ZoomControl, LayersControl } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -281,10 +281,26 @@ const filteredResults = useMemo(() => {
                     className="h-full rounded-md"
                   >
                     <ZoomControl position="topright" />
-                    <TileLayer
-                      attribution="&copy; OpenStreetMap contributors"
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
+                    <LayersControl position="topleft">
+                      <LayersControl.BaseLayer checked name="Ruas">
+                        <TileLayer
+                          attribution="&copy; OpenStreetMap contributors"
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                      </LayersControl.BaseLayer>
+                      <LayersControl.BaseLayer name="Satélite">
+                        <TileLayer
+                          attribution="&copy; Esri"
+                          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                        />
+                      </LayersControl.BaseLayer>
+                      <LayersControl.BaseLayer name="Terreno">
+                        <TileLayer
+                          attribution="&copy; OpenTopoMap"
+                          url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+                        />
+                      </LayersControl.BaseLayer>
+                    </LayersControl>
                   {filteredResults.map((result) => (
                     <CircleMarker
                       key={result.id}
