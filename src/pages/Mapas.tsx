@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import { CircleMarker, Popup, TileLayer, ZoomControl, useMap } from "react-leaflet";
+import { CircleMarker, Popup, TileLayer, ZoomControl } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import FilterControls from "@/components/Filters/FilterControls.tsx"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Home } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 // Corrige ícones padrão do Leaflet
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -132,27 +132,6 @@ const applyJitterToCoordinates = (results: DemoResult[]): DemoResult[] => {
   });
 
   return adjustedResults;
-};
-
-// Reset View Button Component
-const ResetViewButton = () => {
-  const map = useMap();
-  const defaultCenter: [number, number] = [-14.235, -51.925];
-  const defaultZoom = 5;
-
-  const handleReset = () => {
-    map.setView(defaultCenter, defaultZoom);
-  };
-
-  return (
-    <button
-      onClick={handleReset}
-      className="absolute top-[52px] right-2 z-[1000] bg-background border-2 border-border rounded-md p-2 shadow-md hover:bg-accent transition-colors"
-      title="Resetar visualização"
-    >
-      <Home className="h-4 w-4 text-foreground" />
-    </button>
-  );
 };
 
 const Mapas = () => {
@@ -302,7 +281,6 @@ const filteredResults = useMemo(() => {
                     className="h-full rounded-md"
                   >
                     <ZoomControl position="topright" />
-                    <ResetViewButton />
                     <TileLayer
                       attribution="&copy; OpenStreetMap contributors"
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
