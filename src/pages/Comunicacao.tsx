@@ -1,205 +1,186 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, MessageSquare, Send, Users, TrendingUp } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
-import NewCommunicationModal from "@/components/comunicacao/NewCommunicationModal";
-import CommunicationHistory from "@/components/comunicacao/CommunicationHistory";
-import CommunicationStats from "@/components/comunicacao/CommunicationStats";
+import { Button } from "@/components/ui/button";
+import { Plus, Calendar as CalendarIcon, MessageSquare } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import CalendarView from "@/components/comunicacao/CalendarView";
+import ChatSidebar from "@/components/comunicacao/ChatSidebar";
+import ChatWindow from "@/components/comunicacao/ChatWindow";
+import NewMeetingModal from "@/components/comunicacao/NewMeetingModal";
+import {
+  mockMeetings,
+  mockThreads,
+  mockMessages,
+  mockUsers,
+  Meeting,
+  Thread,
+  Message,
+} from "@/mocks/comunicacao";
+import { toast } from "sonner";
 
 const Comunicacao = () => {
-  const navigate = useNavigate();
-  const [showNewModal, setShowNewModal] = useState(false);
-  const [currentCampaignId, setCurrentCampaignId] = useState<string | null>(null);
+  const [meetings, setMeetings] = useState<Meeting[]>(mockMeetings);
+  const [threads, setThreads] = useState<Thread[]>(mockThreads);
+  const [messages, setMessages] = useState<Message[]>(mockMessages);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [showNewMeetingModal, setShowNewMeetingModal] = useState(false);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/auth");
-        return;
-      }
+  // Mock current user (Ana Silva from equipe)
+  const currentUserId = "user-1";
 
-      // Get user's campaign
-      const { data: campaigns } = await supabase
-        .from("campaigns")
-        .select("id")
-        .eq("owner_id", session.user.id)
-        .single();
-
-      if (campaigns) {
-        setCurrentCampaignId(campaigns.id);
-      }
+  const handleCreateMeeting = (newMeeting: Omit<Meeting, "id">) => {
+    const meeting: Meeting = {
+      ...newMeeting,
+      id: `meeting-${Date.now()}`,
     };
-
-    checkAuth();
-  }, [navigate]);
-
-  // Fetch communications
-  const { data: communications, refetch } = useQuery({
-    queryKey: ["communications", currentCampaignId],
-    queryFn: async () => {
-      if (!currentCampaignId) return [];
-
-      const { data, error } = await supabase
-        .from("communications")
-        .select(`
-          *,
-          segments (
-            name,
-            voter_count
-          )
-        `)
-        .eq("campaign_id", currentCampaignId)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        toast.error("Erro ao carregar comunicações");
-        throw error;
-      }
-
-      return data || [];
-    },
-    enabled: !!currentCampaignId,
-  });
-
-  // Fetch segments for stats
-  const { data: segments } = useQuery({
-    queryKey: ["segments", currentCampaignId],
-    queryFn: async () => {
-      if (!currentCampaignId) return [];
-
-      const { data, error } = await supabase
-        .from("segments")
-        .select("*")
-        .eq("campaign_id", currentCampaignId);
-
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!currentCampaignId,
-  });
-
-  const handleNewCommunication = () => {
-    if (!currentCampaignId) {
-      toast.error("Nenhuma campanha encontrada");
-      return;
-    }
-    setShowNewModal(true);
+    setMeetings([...meetings, meeting]);
   };
 
-  const totalSent = communications?.reduce((acc, comm) => acc + (comm.sent_count || 0), 0) || 0;
-  const totalSegments = segments?.length || 0;
-  const totalVoters = segments?.reduce((acc, seg) => acc + (seg.voter_count || 0), 0) || 0;
+  const handleUpdateMeeting = (id: string, updatedMeeting: Partial<Meeting>) => {
+    setMeetings(
+      meetings.map((m) => (m.id === id ? { ...m, ...updatedMeeting } : m))
+    );
+  };
+
+  const handleDeleteMeeting = (id: string) => {
+    setMeetings(meetings.filter((m) => m.id !== id));
+    toast.success("Reunião cancelada com sucesso");
+  };
+
+  const handleSendMessage = (threadId: string, text: string) => {
+    const newMessage: Message = {
+      id: `msg-${Date.now()}`,
+      threadId,
+      senderId: currentUserId,
+      text,
+      createdAt: new Date(),
+      status: "sent",
+    };
+
+    setMessages([...messages, newMessage]);
+
+    // Update thread's last message time
+    setThreads(
+      threads.map((t) =>
+        t.id === threadId ? { ...t, lastMessageAt: new Date() } : t
+      )
+    );
+
+    // Simulate message delivery after 1s
+    setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === newMessage.id ? { ...m, status: "delivered" } : m
+        )
+      );
+    }, 1000);
+
+    // Simulate message read after 3s
+    setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === newMessage.id ? { ...m, status: "read" } : m
+        )
+      );
+    }, 3000);
+  };
+
+  const selectedThread = threads.find((t) => t.id === selectedThreadId);
+  const threadMessages = messages.filter((m) => m.threadId === selectedThreadId);
 
   return (
     <div className="flex min-h-screen w-full bg-background">
       <Sidebar />
       <main className="flex-1 w-full p-6 lg:p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-8">
+        <div className="max-w-[1800px] mx-auto space-y-6">
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2">
-                Comunicações
+                Comunicação
               </h1>
               <p className="text-muted-foreground">
-                Gerencie suas mensagens e campanhas de comunicação
+                Gerencie reuniões e conversas com equipe e colaboradores
               </p>
             </div>
-            <Button
-              onClick={handleNewCommunication}
-              disabled={!currentCampaignId}
-              size="lg"
-            >
+            <Button onClick={() => setShowNewMeetingModal(true)} size="lg">
               <Plus className="w-4 h-4 mr-2" />
-              Nova Comunicação
+              Nova Reunião
             </Button>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Mensagens Enviadas
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <Send className="w-4 h-4 text-primary" />
-                  <span className="text-2xl font-bold">{totalSent}</span>
+          {/* Tabs */}
+          <Tabs defaultValue="calendar" className="w-full">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="calendar">
+                <CalendarIcon className="w-4 h-4 mr-2" />
+                Calendário
+              </TabsTrigger>
+              <TabsTrigger value="chat">
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Conversas
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="calendar" className="mt-6">
+              <CalendarView
+                meetings={meetings}
+                onCreateMeeting={handleCreateMeeting}
+                onUpdateMeeting={handleUpdateMeeting}
+                onDeleteMeeting={handleDeleteMeeting}
+              />
+            </TabsContent>
+
+            <TabsContent value="chat" className="mt-6">
+              <div className="border rounded-lg overflow-hidden" style={{ height: "700px" }}>
+                <div className="flex h-full">
+                  {/* Chat Sidebar */}
+                  <div className="w-80 flex-shrink-0">
+                    <ChatSidebar
+                      threads={threads}
+                      users={mockUsers}
+                      messages={messages}
+                      selectedThreadId={selectedThreadId}
+                      onSelectThread={setSelectedThreadId}
+                    />
+                  </div>
+
+                  {/* Chat Window */}
+                  <div className="flex-1">
+                    {selectedThread ? (
+                      <ChatWindow
+                        thread={selectedThread}
+                        messages={threadMessages}
+                        users={mockUsers}
+                        currentUserId={currentUserId}
+                        onSendMessage={handleSendMessage}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full bg-muted/20">
+                        <div className="text-center space-y-2">
+                          <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground" />
+                          <p className="text-muted-foreground">
+                            Selecione uma conversa para começar
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Comunicações
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-primary" />
-                  <span className="text-2xl font-bold">{communications?.length || 0}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Segmentos Ativos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-primary" />
-                  <span className="text-2xl font-bold">{totalSegments}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total de Eleitores
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                  <span className="text-2xl font-bold">{totalVoters}</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Communication Stats */}
-          <CommunicationStats communications={communications || []} />
-
-          {/* Communication History */}
-          <CommunicationHistory
-            communications={communications || []}
-            onRefetch={refetch}
-          />
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
 
-      {/* New Communication Modal */}
-      {showNewModal && currentCampaignId && (
-        <NewCommunicationModal
-          open={showNewModal}
-          onOpenChange={setShowNewModal}
-          campaignId={currentCampaignId}
-          onSuccess={refetch}
-        />
-      )}
+      {/* New Meeting Modal */}
+      <NewMeetingModal
+        open={showNewMeetingModal}
+        onOpenChange={setShowNewMeetingModal}
+        onCreateMeeting={handleCreateMeeting}
+        initialSlot={null}
+        users={mockUsers}
+      />
     </div>
   );
 };
