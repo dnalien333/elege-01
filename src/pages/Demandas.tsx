@@ -459,7 +459,6 @@ export default function Demandas() {
               { label: "Em Andamento", value: kpis.inProgress, icon: AlertCircle, color: "text-orange-600" },
               { label: "Concluídas", value: kpis.completed, icon: CheckCircle2, color: "text-green-600" },
               { label: "Vencidas", value: kpis.overdue, icon: AlertCircle, color: "text-red-600" },
-              { label: "Não Atribuídas", value: kpis.unassigned, icon: UserPlus, color: "text-gray-600" },
             ].map((kpi) => (
               <Card key={kpi.label} className="p-4">
                 <div className="flex items-center justify-between mb-2">
