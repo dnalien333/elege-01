@@ -1097,7 +1097,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      insert_audit_log: {
+        Args: {
+          p_action: string
+          p_campaign_id?: string
+          p_details?: Json
+          p_entity_id?: string
+          p_entity_type?: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       demand_channel:
