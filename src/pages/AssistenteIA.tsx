@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Sparkles, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import Sidebar from '@/components/layout/Sidebar';
 
 export default function AssistenteIA() {
@@ -77,25 +76,18 @@ export default function AssistenteIA() {
 
     setIsLoading(true);
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) {
-        toast.error('API Key do Gemini não configurada');
-        setIsLoading(false);
-        return;
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
+        body: {
+          message: userMessage,
+          history: messages.slice(-20),
+        },
+      });
+
+      if (error || !data?.response) {
+        throw new Error(data?.error || 'Erro ao processar mensagem');
       }
 
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-      
-      const chat = model.startChat({
-        history: messages.map((msg) => ({
-          role: msg.role === 'user' ? 'user' : 'model',
-          parts: [{ text: msg.content }]
-        }))
-      });
-      
-      const result = await chat.sendMessage(userMessage);
-      const response = result.response.text();
+      const response = data.response;
       
       setMessages((prev) => [...prev, { role: 'assistant', content: response }]);
       await supabase.from('chat_history').insert({
