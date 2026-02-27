@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, MessageSquare, BarChart3, Target, Calendar as CalendarIcon, Plus, ChevronDown, ClipboardList, UserPlus, Flag, DollarSign } from "lucide-react";
+import { mockGoals, getGoalStats } from "@/data/mocks/mockGoals";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -29,8 +30,6 @@ const Dashboard = () => {
     communications: 0,
     segments: 0,
     demands: 0,
-    metasCompleted: 3,
-    metasTotal: 5,
   });
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [myTasks, setMyTasks] = useState<any[]>([]);
@@ -155,8 +154,6 @@ const Dashboard = () => {
           communications: commsCount || 0,
           segments: segmentsCount || 0,
           demands: demandsCount || 0,
-          metasCompleted: 3,
-          metasTotal: 5,
         });
       }
     } catch (error) {
@@ -303,9 +300,9 @@ const Dashboard = () => {
                 <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.metasCompleted}/{stats.metasTotal}</div>
+                <div className="text-2xl font-bold">{getGoalStats(mockGoals).completed}/{getGoalStats(mockGoals).total}</div>
                 <p className="text-xs text-muted-foreground">
-                  concluídas ({Math.round((stats.metasCompleted / stats.metasTotal) * 100)}%)
+                  concluídas ({getGoalStats(mockGoals).percentage}%)
                 </p>
               </CardContent>
             </Card>

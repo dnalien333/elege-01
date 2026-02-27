@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Target, Users, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import { mockGoals, getGoalStats } from "@/data/mocks/mockGoals";
 
 export default function Metas() {
   const navigate = useNavigate();
@@ -43,63 +44,7 @@ export default function Metas() {
     checkAuth();
   }, [navigate]);
 
-  // Mock goals data
-  const mockGoals = [
-    {
-      id: 1,
-      title: "Cadastrar 100 novos eleitores",
-      category: "Cadastros",
-      current: 47,
-      target: 100,
-      deadline: "2025-11-30",
-      status: "on_track",
-      team: "Equipe Centro"
-    },
-    {
-      id: 2,
-      title: "Realizar 50 visitas domiciliares",
-      category: "Engajamento",
-      current: 32,
-      target: 50,
-      deadline: "2025-10-25",
-      status: "on_track",
-      team: "Equipe Zona Norte"
-    },
-    {
-      id: 3,
-      title: "Organizar 3 eventos comunitários",
-      category: "Eventos",
-      current: 3,
-      target: 3,
-      deadline: "2025-10-15",
-      status: "completed",
-      team: "Equipe Digital"
-    },
-    {
-      id: 4,
-      title: "Arrecadar R$ 10.000",
-      category: "Financeiro",
-      current: 6500,
-      target: 10000,
-      deadline: "2025-11-15",
-      status: "on_track",
-      team: null
-    },
-    {
-      id: 5,
-      title: "Conquistar 200 apoiadores",
-      category: "Cadastros",
-      current: 156,
-      target: 200,
-      deadline: "2025-11-05",
-      status: "on_track",
-      team: "Equipe Zona Sul"
-    },
-  ];
-
-  const completed = mockGoals.filter(g => g.status === "completed").length;
-  const total = mockGoals.length;
-  const percentage = Math.round((completed / total) * 100);
+  const { completed, total, percentage } = getGoalStats(mockGoals);
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
