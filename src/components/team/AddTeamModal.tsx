@@ -66,12 +66,13 @@ export default function AddTeamModal({ isOpen, onClose, team }: AddTeamModalProp
   const handleSave = async () => {
     try {
       if (team) {
-        await supabase.from('teams').update({ 
+        const { error } = await supabase.from('teams').update({ 
           name, 
-          leader_id: leaderId,
-          location,
-          tasks
+          leader_id: leaderId || null,
+          location: location || null,
+          tasks: tasks || null
         }).eq('id', team.id);
+        if (error) throw error;
         await supabase.from('team_members').delete().eq('team_id', team.id);
         if (leaderId) {
           await supabase.from('team_members').insert({ team_id: team.id, user_id: leaderId, role: 'leader' });
@@ -84,18 +85,20 @@ export default function AddTeamModal({ isOpen, onClose, team }: AddTeamModalProp
         const { data: campaigns } = await supabase.from('campaigns').select('id').limit(1);
         const { data: user } = await supabase.auth.getUser();
         
-        const { data: newTeam } = await supabase
+        const { data: newTeam, error } = await supabase
           .from('teams')
           .insert({
             name,
-            leader_id: leaderId,
+            leader_id: leaderId || null,
             campaign_id: campaigns?.[0]?.id,
             created_by: user?.user?.id,
-            location,
-            tasks
+            location: location || null,
+            tasks: tasks || null
           })
           .select()
           .single();
+
+        if (error) throw error;
 
         if (newTeam && leaderId) {
           await supabase.from('team_members').insert({ team_id: newTeam.id, user_id: leaderId, role: 'leader' });
