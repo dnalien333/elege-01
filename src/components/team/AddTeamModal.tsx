@@ -82,16 +82,32 @@ export default function AddTeamModal({ isOpen, onClose, team }: AddTeamModalProp
         }
         toast.success('Equipe atualizada com sucesso');
       } else {
-        const { data: campaigns } = await supabase.from('campaigns').select('id').limit(1);
         const { data: user } = await supabase.auth.getUser();
+        const userId = user?.user?.id;
+        
+        // Get or create a campaign for the user
+        let { data: campaigns } = await supabase.from('campaigns').select('id').limit(1);
+        if (!campaigns || campaigns.length === 0) {
+          const { data: newCampaign, error: campError } = await supabase
+            .from('campaigns')
+            .insert({
+              name: 'Minha Campanha',
+              candidate_name: user?.user?.user_metadata?.full_name || 'Candidato',
+              owner_id: userId,
+            })
+            .select('id')
+            .single();
+          if (campError) throw campError;
+          campaigns = [newCampaign];
+        }
         
         const { data: newTeam, error } = await supabase
           .from('teams')
           .insert({
             name,
             leader_id: leaderId || null,
-            campaign_id: campaigns?.[0]?.id,
-            created_by: user?.user?.id,
+            campaign_id: campaigns[0].id,
+            created_by: userId,
             location: location || null,
             tasks: tasks || null
           })
